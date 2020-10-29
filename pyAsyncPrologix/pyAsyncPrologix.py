@@ -133,8 +133,8 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         super().write(b"++mode")
         return DeviceMode(int(await super().read()))
 
-    def set_read_after_write(self, enabled):
-        super().write(b"++auto " + bytes(str(int(enabled)), 'ascii'))
+    def set_read_after_write(self, enable):
+        super().write(b"++auto " + bytes(str(int(enable)), 'ascii'))
 
     async def get_read_after_write(self):
         super().write(b"++auto")
@@ -160,8 +160,8 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         # Create the dict, zip_longest pads the shorted list with None
         return dict(zip_longest(indices, result))
 
-    def set_eoi(self, enabled):
-        super().write(b"++eoi " + bytes(str(int(enabled)), 'ascii'))
+    def set_eoi(self, enable):
+        super().write(b"++eoi " + bytes(str(int(enable)), 'ascii'))
 
     async def get_eoi(self):
         super().write(b"++eoi")
@@ -174,8 +174,8 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         super().write(b"++eos")
         return EosMode(int(await super().read()))
 
-    def set_eot(self, enabled):
-        super().write(b"++eot_enable " + bytes(str(int(enabled)), 'ascii'))
+    def set_eot(self, enable):
+        super().write(b"++eot_enable " + bytes(str(int(enable)), 'ascii'))
 
     async def get_eot(self):
         super().write(b"++eot_enable")
@@ -193,7 +193,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
           super().write(b"++llo")
 
     def timeout(self, value):
-        super().write(b"++read_tmo_ms " + bytes(str(int(enabled)), 'ascii'))
+        super().write(b"++read_tmo_ms " + bytes(str(int(enable)), 'ascii'))
 
     def ibloc(self):
         super().write(b"++loc")
@@ -216,8 +216,8 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         # Return a unicode string
         return (await super().read()).decode()
 
-    def set_listen_only(self, enabled):
-        super().write(b"++lon " + bytes(str(int(enabled)), 'ascii'))
+    def set_listen_only(self, enable):
+        super().write(b"++lon " + bytes(str(int(enable)), 'ascii'))
 
     async def get_listen_only(self):
         super().write(b"++lon")
@@ -240,8 +240,8 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
     def reset(self):
         super().write(b"++rst")
 
-    def set_save_config(self, enabled):
-        super().write(b"++savecfg " + bytes(str(int(enabled)), 'ascii'))
+    def set_save_config(self, enable):
+        super().write(b"++savecfg " + bytes(str(int(enable)), 'ascii'))
 
     async def get_save_config(self):
         super().write(b"++savecfg")
