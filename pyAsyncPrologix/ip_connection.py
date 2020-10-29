@@ -52,7 +52,10 @@ class AsyncIPConnection(object):
 
     def write(self, data):
         self.logger.debug('Sending data: %(payload)s', {'payload': data})
-        self.__writer.write(data)
+        if self.__writer is not None:
+            self.__writer.write(data)
+        else:
+            raise ConnectionError('Prologix IP Connection not connected')
 
     async def read(self):
         try:
@@ -72,7 +75,16 @@ class AsyncIPConnection(object):
 
     async def connect(self, host, port=1234):
         self.__host = host
-        self.__reader, self.__writer = await asyncio.open_connection(host, port, loop=self.__loop)
+        with async_timeout.timeout(1) as cm:  # 1s timeout
+            try:
+                self.__reader, self.__writer = await asyncio.open_connection(host, port, loop=self.__loop)
+            except asyncio.CancelledError:
+                if cm.expired:
+                    raise asyncio.TimeoutError() from None
+                else:
+                    raise
+            except:
+                raise ConnectionError('Prologix IP Connection error during connection: Timeout')
         self.logger.info('Prologix IP connection established to host %(host)s', {'host': self.__host})
 
     async def disconnect(self):
