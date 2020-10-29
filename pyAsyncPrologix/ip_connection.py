@@ -42,6 +42,10 @@ class AsyncIPConnection(object):
     def logger(self):
         return self.__logger
 
+    @property
+    def is_connected(self):
+        return self.__host is not None
+
     def __init__(self, loop):
         self.__loop = loop
         self.__reader, self.__writer = None, None
@@ -74,7 +78,6 @@ class AsyncIPConnection(object):
             return None
 
     async def connect(self, host, port=1234):
-        self.__host = host
         with async_timeout.timeout(1) as cm:  # 1s timeout
             try:
                 self.__reader, self.__writer = await asyncio.open_connection(host, port, loop=self.__loop)
@@ -85,11 +88,12 @@ class AsyncIPConnection(object):
                     raise
             except:
                 raise ConnectionError('Prologix IP Connection error during connection: Timeout')
+        self.__host = host
         self.logger.info('Prologix IP connection established to host %(host)s', {'host': self.__host})
 
     async def disconnect(self):
-        await self.__flush()
         self.__host = None
+        await self.__flush()
         self.logger.info('Prologix IP connection closed')
 
     async def __flush(self):

@@ -66,6 +66,10 @@ class AsyncPrologixEthernet():
         self.__conn = AsyncIPConnection(self.__loop)
         self.__logger = logging.getLogger(__name__)
 
+    @property
+    def is_connected(self):
+        return self.__conn.is_connected
+
     async def connect(self):
         await self.__conn.connect(self.__hostname, self.__port)
 
