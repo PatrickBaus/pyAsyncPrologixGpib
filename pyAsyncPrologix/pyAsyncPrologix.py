@@ -18,7 +18,7 @@
 # ##### END GPL LICENSE BLOCK #####
 
 import asyncio
-from enum import IntEnum, unique
+from enum import Enum, unique
 from itertools import zip_longest
 import logging
 import re   # needed to escape characters in the byte stream
@@ -26,16 +26,16 @@ import re   # needed to escape characters in the byte stream
 from .ip_connection import AsyncIPConnection
 
 @unique
-class DeviceMode(IntEnum):
-    device = 0
-    controller = 1
+class DeviceMode(Enum):
+    DEVICE = 0
+    CONTROLLER = 1
 
 @unique
-class EosMode(IntEnum):
-    appendCrLf = 0
-    appendCr   = 1
-    appendLf   = 2
-    appendNone = 3
+class EosMode(Enum):
+    APPEND_CR_LF = 0
+    APPEND_CR    = 1
+    APPEND_LF    = 2
+    APPEND_NONE  = 3
 
 # The following characters need to be escaped according to:
 # http://prologix.biz/downloads/PrologixGpibEthernetManual.pdf
@@ -45,13 +45,11 @@ translation_map = {
     b"+"   : b"\x1B+",
     b"\x1B": b"\x1B\x1B",
 }
-inverse_translation_map = {v: k for k, v in translation_map.items()}
 
 # Generate a regex pattern which, wich maches on either of the characters (|).
 # Characters like "\n" need to be escaped when used in a regex, so we run re.ecape on
 # all characters first.
 escape_pattern = re.compile(b"|".join(map(re.escape, translation_map.keys())))
-unescape_pattern = re.compile(b"|".join(map(re.escape, inverse_translation_map.keys())))
 
 class AsyncPrologixEthernet():
     """
@@ -103,7 +101,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
     async def connect(self):
         await super().connect()
         self.set_save_config(False)   # Disable saving the config to EEPROM by default, so save EEPROM writes
-        self.set_device_mode(DeviceMode.controller)
+        self.set_device_mode(DeviceMode.CONTROLLER)
         self.set_read_after_write(False)
         self.set_eoi(self.__send_eoi)
         self.set_address(self.__pad, self.__sad)
@@ -124,23 +122,24 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         return await super().read(length=len)
 
     def set_device_mode(self, device_mode):
-        super().write(b"++mode " + bytes(str(int(device_mode)), 'ascii'))
+        super().write("++mode {value:d}".format(value=device_mode.value).encode('ascii'))
 
     async def get_device_mode(self):
         super().write(b"++mode")
         return DeviceMode(int(await super().read()))
 
     def set_read_after_write(self, enable):
-        super().write(b"++auto " + bytes(str(int(enable)), 'ascii'))
+        super().write("++auto {value:d}".format(value=enable).encode('ascii'))
 
     async def get_read_after_write(self):
         super().write(b"++auto")
         return bool(int(await super().read()))
 
     def set_address(self, pad, sad=None):
-        address = b"++addr " + bytes(str(int(pad)), 'ascii')
-        if sad is not None:
-          address += b" " + bytes(str(int(sad + 96)), 'ascii')
+        if sad is None:
+          address = "++addr {pad:d}".format(pad=pad).encode('ascii')
+        else:
+          address = "++addr {pad:d} {sad:d}".format(pad=pad, sad=sad+96).encode('ascii')
 
         super().write(address)
 
@@ -154,6 +153,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         # We return a dict looking like this {"pad": pad, "sad": None} or {"pad": pad, "sad": sad-96}
         # So we first split the string, then create a list of ints, and substract 96 from the second item (index = 1)
         result = [int(addr)-96*i for i, addr in enumerate((await super().read()).split(b" "))]
+
         # Create the dict, zip_longest pads the shorted list with None
         return dict(zip_longest(indices, result))
 
@@ -165,21 +165,21 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         return bool(int(await super().read()))
 
     def set_eos_mode(self, mode):
-        super().write(b"++eos " + bytes(str(int(mode)), 'ascii'))
+        super().write("++eos {value:d}".format(value=mode.value).encode('ascii'))
 
     async def get_eos_mode(self):
         super().write(b"++eos")
         return EosMode(int(await super().read()))
 
     def set_eot(self, enable):
-        super().write(b"++eot_enable " + bytes(str(int(enable)), 'ascii'))
+        super().write("++eot_enable {value:d}".format(value=enable).encode('ascii'))
 
     async def get_eot(self):
         super().write(b"++eot_enable")
         return bool(int(await super().read()))
 
     def set_eot_char(self, character):
-        super().write(b"++eot_char " + bytes(str(ord(character)), 'ascii'))
+        super().write("++eot_char {value:d}".format(value=ord(character)).encode('ascii'))
 
     async def get_eot_char(self):
         super().write(b"++eot_char")
@@ -190,7 +190,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
           super().write(b"++llo")
 
     def timeout(self, value):
-        super().write(b"++read_tmo_ms " + bytes(str(int(value)), 'ascii'))
+        super().write("++read_tmo_ms {value:d}".format(value=value).encode('ascii'))
 
     def ibloc(self):
         super().write(b"++loc")
@@ -214,7 +214,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         return (await super().read()).decode()
 
     def set_listen_only(self, enable):
-        super().write(b"++lon " + bytes(str(int(enable)), 'ascii'))
+        super().write("++lon {value:d}".format(value=enable).encode('ascii'))
 
     async def get_listen_only(self):
         super().write(b"++lon")
@@ -238,7 +238,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         super().write(b"++rst")
 
     def set_save_config(self, enable):
-        super().write(b"++savecfg " + bytes(str(int(enable)), 'ascii'))
+        super().write("++savecfg {value:d}".format(value=enable).encode('ascii'))
 
     async def get_save_config(self):
         super().write(b"++savecfg")
