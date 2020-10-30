@@ -82,9 +82,10 @@ class AsyncPrologixEthernet():
     def write(self, data):
         self.__conn.write(data + b"\n")   # Append Prologix ETHERNET termination character
 
-    async def read(self, len=512):
-        data = (await self.__conn.read())[:-2]    # strip \r\n
-
+    async def read(self, length=None):
+        data = await self.__conn.read(length=length)
+        if length is None and len(data) >= 2:
+            data = data[:-2]    # strip \r\n
         return data
 
 class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
@@ -118,9 +119,9 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         data = self.__escape_data(data)
         super().write(data)
 
-    async def read(self, len=512):
+    async def read(self, len=None):
         super().write(b"++read eoi")
-        return await super().read()
+        return await super().read(length=len)
 
     def set_device_mode(self, device_mode):
         super().write(b"++mode " + bytes(str(int(device_mode)), 'ascii'))

@@ -61,11 +61,16 @@ class AsyncIPConnection(object):
         else:
             raise ConnectionError('Prologix IP Connection not connected')
 
-    async def read(self):
+    async def read(self, length=None):
         try:
             with async_timeout.timeout(self.__timeout) as cm:
                 try:
-                    return await self.__reader.readuntil(self.SEPARATOR)
+                    if length is None:
+                        data = await self.__reader.readuntil(self.SEPARATOR)
+                    else:
+                        data = await self.__reader.readexactly(length)
+                    self.__logger.debug("Data read: %(data)s", {'data': data})
+                    return data
                 except asyncio.CancelledError:
                     if cm.expired:
                         raise asyncio.TimeoutError() from None
