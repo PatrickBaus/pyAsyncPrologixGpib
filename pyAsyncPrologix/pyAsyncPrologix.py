@@ -101,11 +101,13 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
 
     async def connect(self):
         await super().connect()
+        self.set_save_config(False)   # Disable saving the config to EEPROM by default, so save EEPROM writes
         self.set_device_mode(DeviceMode.controller)
         self.set_read_after_write(False)
         self.set_eoi(self.__send_eoi)
         self.set_address(self.__pad, self.__sad)
         self.set_eos_mode(self.__eos_mode)
+        self.timeout(self.__timeout)
 
     def __escape_data(self, data):
         # \r, \n, \x1B (27, ESC), + need to be escaped
