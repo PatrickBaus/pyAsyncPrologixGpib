@@ -22,7 +22,7 @@ import async_timeout
 import logging
 
 
-DEFAULT_WAIT_TIMEOUT = 2.5 # in seconds
+DEFAULT_WAIT_TIMEOUT = 1 # in seconds
 
 class AsyncIPConnection(object):
     SEPARATOR = b'\n'
@@ -46,11 +46,11 @@ class AsyncIPConnection(object):
     def is_connected(self):
         return self.__host is not None
 
-    def __init__(self, loop):
-        self.__loop = loop
+    def __init__(self, timeout=None, loop=None):
+        self.__loop = asyncio.get_event_loop() if loop is None else loop
         self.__reader, self.__writer = None, None
         self.__host = None
-        self.__timeout = DEFAULT_WAIT_TIMEOUT
+        self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout
 
         self.__logger = logging.getLogger(__name__)
 

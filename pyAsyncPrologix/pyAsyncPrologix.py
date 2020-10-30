@@ -58,12 +58,12 @@ class AsyncPrologixEthernet():
     name: Either e.g. "gpib0" (string) or 0 (integer)
     pad: primary address
     """
-    def __init__(self, hostname, port=1234, loop=None):
+    def __init__(self, hostname, port=1234, timeout=1000, loop=None):
         self.__loop = asyncio.get_event_loop() if loop is None else loop
         self.__hostname = hostname
         self.__port = port
 
-        self.__conn = AsyncIPConnection(self.__loop)
+        self.__conn = AsyncIPConnection(timeout=timeout/1000, loop=self.__loop)   # timeout is in seconds
         self.__logger = logging.getLogger(__name__)
 
     @property
@@ -88,8 +88,8 @@ class AsyncPrologixEthernet():
         return data
 
 class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
-    def __init__(self, hostname, pad, port=1234, sad=None, timeout=13, send_eoi=1, eos_mode=0, loop=None):
-        super().__init__(hostname, port, loop)
+    def __init__(self, hostname, pad, port=1234, sad=None, timeout=13, send_eoi=1, eos_mode=0, ethernet_timeout=1000, loop=None):
+        super().__init__(hostname, port, timeout+ethernet_timeout, loop)
         self.__timeout = timeout
 
         self.__pad = pad
