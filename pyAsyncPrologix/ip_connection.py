@@ -71,11 +71,9 @@ class AsyncIPConnection(object):
                         raise asyncio.TimeoutError() from None
                     else:
                         raise
-                except:
-                  self.logger.exception('Error while reading data.')
-                  return None
         except asyncio.TimeoutError:
-            return None
+            self.logger.exception('Timout while reading data.')
+            raise
 
     async def connect(self, host, port=1234):
         with async_timeout.timeout(1) as cm:  # 1s timeout
