@@ -80,7 +80,7 @@ class AsyncPrologixEthernet():
         await self.__conn.disconnect()
 
     def write(self, data):
-        self.__conn.write(data + b"\n")
+        self.__conn.write(data + b"\n")   # Append Prologix ETHERNET termination character
 
     async def read(self, len=512):
         data = (await self.__conn.read())[:-2]    # strip \r\n
@@ -121,7 +121,6 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         return await super().read()
 
     def set_device_mode(self, device_mode):
-        #self.__logger.debug("Setting device mode to: %(mode)s", {'mode': device_mode})
         super().write(b"++mode " + bytes(str(int(device_mode)), 'ascii'))
 
     async def get_device_mode(self):
@@ -188,7 +187,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
           super().write(b"++llo")
 
     def timeout(self, value):
-        super().write(b"++read_tmo_ms " + bytes(str(int(enable)), 'ascii'))
+        super().write(b"++read_tmo_ms " + bytes(str(int(value)), 'ascii'))
 
     def ibloc(self):
         super().write(b"++loc")
