@@ -82,14 +82,9 @@ class AsyncPrologixEthernet():
     def write(self, data):
         self.__conn.write(data + b"\n")
 
-    def __unescape_data(self, data):
-        # Remove all b"\x1B" escape characters, but remember to keep one \x1B if it is escaped
-        return unescape_pattern.sub(lambda match: inverse_translation_map[match.group(0)], data)
-
     async def read(self, len=512):
         data = (await self.__conn.read())[:-2]    # strip \r\n
 
-        data = self.__unescape_data(data)
         return data
 
 class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
