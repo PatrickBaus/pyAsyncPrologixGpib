@@ -89,6 +89,11 @@ class AsyncIPConnection(object):
                     raise asyncio.TimeoutError() from None
                 else:
                     raise
+            except OSError as error:
+                if error.errno == 101:
+                  raise ConnectionError(f"Prologix IP Connection error during connection: Cannot connect to address {host}:{port}") from None
+                else:
+                  raise
             except:
                 raise ConnectionError('Prologix IP Connection error during connection: Timeout')
         self.__host = host
