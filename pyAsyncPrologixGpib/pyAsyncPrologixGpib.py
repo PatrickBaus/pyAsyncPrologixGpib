@@ -104,8 +104,6 @@ class AsyncPrologixEthernet():
         return data
 
 class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
-    remote_state = {"pad": None, "sad": None}
-
     def __init__(self, hostname, pad, port=1234, sad=None, timeout=13, send_eoi=1, eos_mode=0, ethernet_timeout=1000, loop=None):
         super().__init__(hostname, port, timeout+ethernet_timeout, loop)
         self.__timeout = timeout
@@ -135,22 +133,16 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
             self.timeout(self.__timeout)
         )
 
-    async def ensure_state(self):
-        if type(self).remote_state["pad"] != self.__pad or type(self).remote_state["sad"] != self.__sad:
-            await self.set_address(self.__pad, self.__sad)
-
     def __escape_data(self, data):
         # \r, \n, \x1B (27, ESC), + need to be escaped
         # Use a regex to match them replace them using a translation map
         return escape_pattern.sub(lambda match: translation_map[match.group(0)], data)
 
     async def write(self, data):
-        await self.__ensure_state()
         data = self.__escape_data(data)
         await super().write(data)
 
     async def read(self, len=None):
-        await self.__ensure_state()
         await super().write(b"++read eoi")
         return await super().read(length=len)
 
@@ -176,8 +168,8 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
           address = "++addr {pad:d} {sad:d}".format(pad=pad, sad=sad+96).encode('ascii')
 
         await super().write(address)
-        self.__pad = type(self).remote_state["pad"] = pad
-        self.__sad = type(self).remote_state["sad"] = sad
+        self.__pad = pad
+        self.__sad = sad
 
     async def get_address(self):
         indices = ["pad", "sad"]
@@ -239,7 +231,6 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         await super().write(b"++loc")
 
     async def ibsta(self):
-        await self.__ensure_state()
         await super().write(b"++status")
         return await super().read()
 
@@ -247,11 +238,9 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         await super().write(b"++ifc")
 
     async def clear(self):
-        await self.__ensure_state()
         await super().write(b"++clr")
 
     async def trigger(self):
-        await self.__ensure_state()
         await super().write(b"++trg")
 
     async def version(self):
@@ -272,8 +261,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
             command += b" " + bytes(str(int(pad)), 'ascii')
             if sad is not None:
                 command += b" " + bytes(str(int(sad + 96)), 'ascii')
-        else:
-            await self.__ensure_state()
+
         await super().write(command)
 
         return await super().read()
