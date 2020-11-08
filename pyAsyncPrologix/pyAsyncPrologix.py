@@ -77,8 +77,8 @@ class AsyncPrologixEthernet():
     async def disconnect(self):
         await self.__conn.disconnect()
 
-    def write(self, data):
-        self.__conn.write(data + b"\n")   # Append Prologix ETHERNET termination character
+    async def write(self, data):
+        await self.__conn.write(data + b"\n")   # Append Prologix ETHERNET termination character
 
     async def read(self, length=None):
         data = await self.__conn.read(length=length)
@@ -100,53 +100,56 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
 
     async def connect(self):
         await super().connect()
-        self.set_save_config(False)   # Disable saving the config to EEPROM by default, so save EEPROM writes
-        self.set_device_mode(DeviceMode.CONTROLLER)
-        self.set_read_after_write(False)
-        self.set_eoi(self.__send_eoi)
-        self.set_address(self.__pad, self.__sad)
-        self.set_eos_mode(self.__eos_mode)
-        self.timeout(self.__timeout)
+        #TODO: await this
+        await asyncio.gather(
+            self.set_save_config(False),    # Disable saving the config to EEPROM by default, so save EEPROM writes
+            self.set_device_mode(DeviceMode.CONTROLLER),
+            self.set_read_after_write(False),
+            self.set_eoi(self.__send_eoi),
+            self.set_address(self.__pad, self.__sad),
+            self.set_eos_mode(self.__eos_mode),
+            self.timeout(self.__timeout)
+        )
 
     def __escape_data(self, data):
         # \r, \n, \x1B (27, ESC), + need to be escaped
         # Use a regex to match them replace them using a translation map
         return escape_pattern.sub(lambda match: translation_map[match.group(0)], data)
 
-    def write(self, data):
+    async def write(self, data):
         data = self.__escape_data(data)
-        super().write(data)
+        await super().write(data)
 
     async def read(self, len=None):
-        super().write(b"++read eoi")
+        await super().write(b"++read eoi")
         return await super().read(length=len)
 
-    def set_device_mode(self, device_mode):
-        super().write("++mode {value:d}".format(value=device_mode.value).encode('ascii'))
+    async def set_device_mode(self, device_mode):
+        await super().write("++mode {value:d}".format(value=device_mode.value).encode('ascii'))
 
     async def get_device_mode(self):
-        super().write(b"++mode")
+        await super().write(b"++mode")
         return DeviceMode(int(await super().read()))
 
-    def set_read_after_write(self, enable):
-        super().write("++auto {value:d}".format(value=enable).encode('ascii'))
+    async def set_read_after_write(self, enable):
+        await super().write("++auto {value:d}".format(value=enable).encode('ascii'))
 
     async def get_read_after_write(self):
-        super().write(b"++auto")
+        await super().write(b"++auto")
         return bool(int(await super().read()))
 
-    def set_address(self, pad, sad=None):
+    async def set_address(self, pad, sad=None):
         if sad is None:
           address = "++addr {pad:d}".format(pad=pad).encode('ascii')
         else:
           address = "++addr {pad:d} {sad:d}".format(pad=pad, sad=sad+96).encode('ascii')
 
-        super().write(address)
+        await super().write(address)
 
     async def get_address(self):
         indices = ["pad", "sad"]
         
-        super().write(b"++addr")
+        await super().write(b"++addr")
         # The result might by either "pad" or "pad sad"
         # The secondary address is offset by 96.
         # See here for the reason: http://www.ni.com/tutorial/2801/en/#:~:text=The%20secondary%20address%20is%20actually,the%20last%20bit%20is%20not
@@ -157,67 +160,68 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         # Create the dict, zip_longest pads the shorted list with None
         return dict(zip_longest(indices, result))
 
-    def set_eoi(self, enable):
-        super().write(b"++eoi " + bytes(str(int(enable)), 'ascii'))
+    async def set_eoi(self, enable):
+        await super().write(b"++eoi " + bytes(str(int(enable)), 'ascii'))
 
     async def get_eoi(self):
-        super().write(b"++eoi")
+        await super().write(b"++eoi")
         return bool(int(await super().read()))
 
-    def set_eos_mode(self, mode):
-        super().write("++eos {value:d}".format(value=mode.value).encode('ascii'))
+    async def set_eos_mode(self, mode):
+        await super().write("++eos {value:d}".format(value=mode.value).encode('ascii'))
 
     async def get_eos_mode(self):
-        super().write(b"++eos")
+        await super().write(b"++eos")
         return EosMode(int(await super().read()))
 
-    def set_eot(self, enable):
-        super().write("++eot_enable {value:d}".format(value=enable).encode('ascii'))
+    async def set_eot(self, enable):
+        await super().write("++eot_enable {value:d}".format(value=enable).encode('ascii'))
 
     async def get_eot(self):
-        super().write(b"++eot_enable")
+        await super().write(b"++eot_enable")
         return bool(int(await super().read()))
 
-    def set_eot_char(self, character):
-        super().write("++eot_char {value:d}".format(value=ord(character)).encode('ascii'))
+    async def set_eot_char(self, character):
+        await super().write("++eot_char {value:d}".format(value=ord(character)).encode('ascii'))
 
     async def get_eot_char(self):
-        super().write(b"++eot_char")
+        await super().write(b"++eot_char")
         return chr(int(await super().read()))
 
-    def remote_enable(self, enable):
+    async def remote_enable(self, enable=True):
         if bool(enable):
-          super().write(b"++llo")
+          await super().write(b"++llo")
 
-    def timeout(self, value):
-        super().write("++read_tmo_ms {value:d}".format(value=value).encode('ascii'))
+    async def timeout(self, value):
+        assert (1 <= value <= 3000)
+        await super().write("++read_tmo_ms {value:d}".format(value=value).encode('ascii'))
 
-    def ibloc(self):
-        super().write(b"++loc")
+    async def ibloc(self):
+        await super().write(b"++loc")
 
     async def ibsta(self):
-        super().write(b"++status")
+        await super().write(b"++status")
         return await super().read()
 
-    def interface_clear(self):
-        super().write(b"++ifc")
+    async def interface_clear(self):
+        await super().write(b"++ifc")
 
-    def clear(self):
-        super().write(b"++clr")
+    async def clear(self):
+        await super().write(b"++clr")
 
-    def trigger(self):
-        super().write(b"++trg")
+    async def trigger(self):
+        await super().write(b"++trg")
 
     async def version(self):
-        super().write(b"++ver")
+        await super().write(b"++ver")
         # Return a unicode string
         return (await super().read()).decode()
 
-    def set_listen_only(self, enable):
-        super().write("++lon {value:d}".format(value=enable).encode('ascii'))
+    async def set_listen_only(self, enable):
+        await super().write("++lon {value:d}".format(value=enable).encode('ascii'))
 
     async def get_listen_only(self):
-        super().write(b"++lon")
+        await super().write(b"++lon")
         return bool(int(await super().read()))
 
     async def serial_poll(self, pad=None, sad=None):
@@ -226,20 +230,20 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
             command += b" " + bytes(str(int(pad)), 'ascii')
             if sad is not None:
                 command += b" " + bytes(str(int(sad + 96)), 'ascii')
-        super().write(command)
+        await super().write(command)
 
         return await super().read()
 
     async def test_srq(self):
-        super().write(b"++srq")
+        await super().write(b"++srq")
         return bool(int(await super().read()))
 
-    def reset(self):
-        super().write(b"++rst")
+    async def reset(self):
+        await super().write(b"++rst")
 
-    def set_save_config(self, enable):
-        super().write("++savecfg {value:d}".format(value=enable).encode('ascii'))
+    async def set_save_config(self, enable):
+        await super().write("++savecfg {value:d}".format(value=enable).encode('ascii'))
 
     async def get_save_config(self):
-        super().write(b"++savecfg")
+        await super().write(b"++savecfg")
         return bool(int(await super().read()))
