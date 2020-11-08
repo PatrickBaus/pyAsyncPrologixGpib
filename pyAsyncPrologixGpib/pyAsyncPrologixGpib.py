@@ -51,7 +51,9 @@ translation_map = {
 # all characters first.
 escape_pattern = re.compile(b"|".join(map(re.escape, translation_map.keys())))
 
-class AsyncPrologixEthernet():
+class EthernetProtocol()
+
+class AsyncPrologixEthernet(EthernetProtocol):
     """
     name: Either e.g. "gpib0" (string) or 0 (integer)
     pad: primary address

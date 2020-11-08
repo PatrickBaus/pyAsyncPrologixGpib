@@ -26,11 +26,11 @@ import sys
 sys.path.append("..") # Adds main directory to python modules path.
 
 # Devices
-from pyAsyncPrologix.pyAsyncPrologix import AsyncPrologixGpibEthernetController
+from pyAsyncPrologixGpib.pyAsyncPrologixGpib import AsyncPrologixGpibEthernetController
 
 running_tasks = []
 loop = asyncio.get_event_loop()
-# The primary address 22 can be any. There is no device connection required for this example
+# The primary address (e.g. 22) can be anything. There is no device connection required for this example
 gpib_device = AsyncPrologixGpibEthernetController('127.0.0.1', pad=22)
 
 async def stop_loop():
