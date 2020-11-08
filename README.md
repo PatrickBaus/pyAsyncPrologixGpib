@@ -70,11 +70,11 @@ asyncio.run(main())
 See [examples/](examples/) for more working examples.
 
 ## Support for Multiple Devices
-The Prologix GPIB adapter supports talking to multiple devices, but there are caveats. First of all there are hardware limitation, as the Prologix adapters do not have line drivers. So the GPIB cable length and number of devices is seriously limited. On the software side, there is no way to read or write a specific device with a single command. One has to switch back and forth using the '++adr' command. This is not so much of a problem with the USB adapter as one instance of a program typically has exclusive access to the serial resource. From the library point of view, the only thing one would have to do is to keep track of the internal state of the adapter and update the controller to match different device setups, when switching between devices. Regarding the Ethernet controller, the problem is escalated, because 'anyone' on the network can change the internal state of the adapter and there is no way to track this.
+The Prologix GPIB adapter supports talking to multiple devices, but there are caveats. First of all there are hardware limitations, as the Prologix adapters do not have line drivers. So the GPIB cable length and number of devices is seriously limited. On the software side, there is no way to read or write a specific device with a single command. One has to switch back and forth using the '++adr' command. This is not so much of a problem with the USB adapter as one instance of a program typically has exclusive access to the serial resource. From the library point of view, the only thing one would have to do is to keep track of the internal state of the adapter and update the controller to match different device setups, when switching between devices. Regarding the Ethernet controller, the problem is escalated, because 'anyone' on the network can change the internal state of the adapter and there is no way to track this.
 
 To avoid both the hardware limitations and the software issues, I recommend using one controller per device.
 
-Although, this module does not have integrated support for multiple instances. It is still possible to create them and use multiple devices with it. One only has to make sure to make a call to the 'set_address()' function and all other configuration related functions before talking to the devices.
+Although, this module does not have integrated support for multiple instances. It is still possible to create them and use multiple devices with it. One only has to make sure to call to the 'set_address()' function and all other configuration related functions before talking to the devices.
 
 ## Versioning
 
