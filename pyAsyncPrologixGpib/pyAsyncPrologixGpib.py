@@ -52,8 +52,8 @@ escape_pattern = re.compile(b"|".join(map(re.escape, translation_map.keys())))
 
 class AsyncPrologixEthernet():
     """
-    name: Either e.g. "gpib0" (string) or 0 (integer)
-    pad: primary address
+    The name can either be an ip address or a hostname. The default port is 1234. The timeout is in ms.
+    If a specific loop is required, it can be passed as a parameter as well.
     """
     def __init__(self, hostname, port=1234, timeout=1000, loop=None):
         self.__loop = loop
@@ -64,47 +64,80 @@ class AsyncPrologixEthernet():
 
     @property
     def is_connected(self):
+        """
+        Returns True if the connection has been established.
+        """
         return self.__conn.is_connected
 
     async def connect(self):
+        """
+        Connect to the ethernet controller.
+        """
         await self.__conn.connect(self.__hostname, self.__port)
 
     async def close(self):
+        """
+        This is an alias for disconnect().
+        """
         await self.disconnect()
 
     async def disconnect(self):
+        """
+        Close the ip connection and flush its buffers.
+        """
         await self.__conn.disconnect()
 
     async def write(self, data):
+        """
+        Send a bytestring to the controller. The command will not be escaped and enables sending '++' commands.
+        Do not add a termination character, because it will automatically be added.
+        """
         await self.__conn.write(data + b"\n")   # Append Prologix ETHERNET termination character
 
     async def read(self, length=None):
+        """
+        Read a bytestring from the controller and return it. The termination character will be stripped.
+        """
         data = await self.__conn.read(length=length)
         if length is None and len(data) >= 2:
             data = data[:-2]    # strip \r\n
         return data
 
 class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
+    remote_state = {"pad": None, "sad": None}
+
     def __init__(self, hostname, pad, port=1234, sad=None, timeout=13, send_eoi=1, eos_mode=0, ethernet_timeout=1000, loop=None):
         super().__init__(hostname, port, timeout+ethernet_timeout, loop)
         self.__timeout = timeout
 
         self.__pad = pad
         self.__sad = sad
-        self.__send_eoi = bool(send_eoi)
+        self.__send_eoi = bool(int(send_eoi))
+        self.__send_eot = False
+        self.__eot_char = b"\n"
         self.__eos_mode = EosMode(eos_mode)
 
     async def connect(self):
+        """
+        Connect to the ethernet controller and configure the device as a GPIB controller. By default the configuration
+        will not be saved to EEPROM to safe write cycles.
+        """
         await super().connect()
         await asyncio.gather(
             self.set_save_config(False),    # Disable saving the config to EEPROM by default, so save EEPROM writes
             self.set_device_mode(DeviceMode.CONTROLLER),
+            self.set_address(self.__pad, self.__sad),
             self.set_read_after_write(False),
             self.set_eoi(self.__send_eoi),
-            self.set_address(self.__pad, self.__sad),
+            self.set_eot(self.__send_eot),
+            self.set_eot_char(self.__eot_char),
             self.set_eos_mode(self.__eos_mode),
             self.timeout(self.__timeout)
         )
+
+    async def ensure_state(self):
+        if type(self).remote_state["pad"] != self.__pad or type(self).remote_state["sad"] != self.__sad:
+            await self.set_address(self.__pad, self.__sad)
 
     def __escape_data(self, data):
         # \r, \n, \x1B (27, ESC), + need to be escaped
@@ -112,14 +145,17 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         return escape_pattern.sub(lambda match: translation_map[match.group(0)], data)
 
     async def write(self, data):
+        await self.__ensure_state()
         data = self.__escape_data(data)
         await super().write(data)
 
     async def read(self, len=None):
+        await self.__ensure_state()
         await super().write(b"++read eoi")
         return await super().read(length=len)
 
     async def set_device_mode(self, device_mode):
+        assert isinstance(device_mode, DeviceMode)
         await super().write("++mode {value:d}".format(value=device_mode.value).encode('ascii'))
 
     async def get_device_mode(self):
@@ -140,6 +176,8 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
           address = "++addr {pad:d} {sad:d}".format(pad=pad, sad=sad+96).encode('ascii')
 
         await super().write(address)
+        self.__pad = type(self).remote_state["pad"] = pad
+        self.__sad = type(self).remote_state["sad"] = sad
 
     async def get_address(self):
         indices = ["pad", "sad"]
@@ -156,14 +194,17 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         return dict(zip_longest(indices, result))
 
     async def set_eoi(self, enable):
-        await super().write(b"++eoi " + bytes(str(int(enable)), 'ascii'))
+        await super().write("++eoi {value:d}".format(value=enable).encode('ascii'))
+        self.__send_eoi = bool(int(enable))
 
     async def get_eoi(self):
         await super().write(b"++eoi")
         return bool(int(await super().read()))
 
     async def set_eos_mode(self, mode):
+        assert isinstance(mode, EosMode)
         await super().write("++eos {value:d}".format(value=mode.value).encode('ascii'))
+        self.__eos_mode = mode
 
     async def get_eos_mode(self):
         await super().write(b"++eos")
@@ -171,6 +212,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
 
     async def set_eot(self, enable):
         await super().write("++eot_enable {value:d}".format(value=enable).encode('ascii'))
+        self.__send_eot = bool(int(enable))
 
     async def get_eot(self):
         await super().write(b"++eot_enable")
@@ -178,6 +220,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
 
     async def set_eot_char(self, character):
         await super().write("++eot_char {value:d}".format(value=ord(character)).encode('ascii'))
+        self.__eot_char = character
 
     async def get_eot_char(self):
         await super().write(b"++eot_char")
@@ -190,11 +233,13 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
     async def timeout(self, value):
         assert (1 <= value <= 3000)
         await super().write("++read_tmo_ms {value:d}".format(value=value).encode('ascii'))
+        self.__timeout = value
 
     async def ibloc(self):
         await super().write(b"++loc")
 
     async def ibsta(self):
+        await self.__ensure_state()
         await super().write(b"++status")
         return await super().read()
 
@@ -202,9 +247,11 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         await super().write(b"++ifc")
 
     async def clear(self):
+        await self.__ensure_state()
         await super().write(b"++clr")
 
     async def trigger(self):
+        await self.__ensure_state()
         await super().write(b"++trg")
 
     async def version(self):
@@ -225,6 +272,8 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
             command += b" " + bytes(str(int(pad)), 'ascii')
             if sad is not None:
                 command += b" " + bytes(str(int(sad + 96)), 'ascii')
+        else:
+            await self.__ensure_state()
         await super().write(command)
 
         return await super().read()
