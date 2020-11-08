@@ -54,10 +54,11 @@ class AsyncIPConnection(object):
 
         self.__logger = logging.getLogger(__name__)
 
-    def write(self, data):
+    async def write(self, data):
         self.logger.debug('Sending data: %(payload)s', {'payload': data})
         if self.__writer is not None:
             self.__writer.write(data)
+            await self.__writer.drain()
         else:
             raise ConnectionError('Prologix IP Connection not connected')
 
@@ -111,5 +112,6 @@ class AsyncIPConnection(object):
             self.__writer.write_eof()
             await self.__writer.drain()
             self.__writer.close()
+            await self.__writer.wait_closed()
             self.__writer = None
 
