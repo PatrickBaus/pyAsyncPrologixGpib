@@ -47,7 +47,7 @@ class AsyncIPConnection(object):
         return self.__host is not None
 
     def __init__(self, timeout=None, loop=None):
-        self.__loop = asyncio.get_event_loop() if loop is None else loop
+        self.__loop = loop
         self.__reader, self.__writer = None, None
         self.__host = None
         self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout

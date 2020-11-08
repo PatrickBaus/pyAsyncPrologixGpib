@@ -51,15 +51,13 @@ translation_map = {
 # all characters first.
 escape_pattern = re.compile(b"|".join(map(re.escape, translation_map.keys())))
 
-class EthernetProtocol()
-
-class AsyncPrologixEthernet(EthernetProtocol):
+class AsyncPrologixEthernet():
     """
     name: Either e.g. "gpib0" (string) or 0 (integer)
     pad: primary address
     """
     def __init__(self, hostname, port=1234, timeout=1000, loop=None):
-        self.__loop = asyncio.get_event_loop() if loop is None else loop
+        self.__loop = loop
         self.__hostname = hostname
         self.__port = port
 
