@@ -20,7 +20,6 @@
 import asyncio
 from enum import Enum, unique
 from itertools import zip_longest
-import logging
 import re   # needed to escape characters in the byte stream
 
 from .ip_connection import AsyncIPConnection
@@ -62,7 +61,6 @@ class AsyncPrologixEthernet():
         self.__port = port
 
         self.__conn = AsyncIPConnection(timeout=timeout/1000, loop=self.__loop)   # timeout is in seconds
-        self.__logger = logging.getLogger(__name__)
 
     @property
     def is_connected(self):
@@ -96,11 +94,8 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         self.__send_eoi = bool(send_eoi)
         self.__eos_mode = EosMode(eos_mode)
 
-        self.__logger = logging.getLogger(__name__)
-
     async def connect(self):
         await super().connect()
-        #TODO: await this
         await asyncio.gather(
             self.set_save_config(False),    # Disable saving the config to EEPROM by default, so save EEPROM writes
             self.set_device_mode(DeviceMode.CONTROLLER),
