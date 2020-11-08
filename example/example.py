@@ -23,7 +23,7 @@ import logging
 import warnings
 import sys
 
-sys.path.append("..") # Adds higher directory to python modules path.
+sys.path.append("..") # Adds main directory to python modules path.
 
 # Devices
 from pyAsyncPrologix.pyAsyncPrologix import AsyncPrologixGpibEthernetController
@@ -71,7 +71,7 @@ async def main():
 
 # Report all mistakes managing asynchronous resources.
 warnings.simplefilter('always', ResourceWarning)
-loop.set_debug(enabled=True)    # Raise all execption and log all callbacks taking longer than 100 ms
+loop.set_debug(enabled=True)    # Raise all execptions and log all callbacks taking longer than 100 ms
 logging.basicConfig(level=logging.INFO)    # Enable logs from the ip connection. Set to debug for even more info
 
 running_tasks.append(asyncio.ensure_future(main()))
