@@ -1,5 +1,5 @@
 # pyAsyncPrologixGpib
-Python3 AsyncIO Prologix GPIB Driver. This library requires Python [asyncio](https://docs.python.org/3/library/asyncio.html). In contrast to a synchronous, this library makes it possible to control multiple GPIB controllers at once and work with large setups.
+Python3 AsyncIO Prologix GPIB Driver. This library requires Python [asyncio](https://docs.python.org/3/library/asyncio.html). In contrast to a synchronous implementation, this library makes it possible to control multiple GPIB controllers at once and work with large setups.
 
 ## Supported Hardware
 |Device|Supported|Tested|Comments|
