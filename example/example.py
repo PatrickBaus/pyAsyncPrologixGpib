@@ -29,15 +29,18 @@ sys.path.append("..") # Adds higher directory to python modules path.
 from pyAsyncPrologix.pyAsyncPrologix import AsyncPrologixGpibEthernetController
 
 running_tasks = []
+loop = asyncio.get_event_loop()
 # The primary address 22 can be any. There is no device connection required for this example
 gpib_device = AsyncPrologixGpibEthernetController('127.0.0.1', pad=22)
 
 async def stop_loop():
     # Clean up: Disconnect ip connection and stop the consumers
-    await gpib_device.disconnect()
     for task in running_tasks:
         task.cancel()
-    await asyncio.gather(*running_tasks)
+    try:
+      await asyncio.gather(*running_tasks)
+    except asyncio.CancelledError:
+        pass
     loop.stop()    
 
 def error_handler(task):
@@ -47,19 +50,24 @@ def error_handler(task):
       asyncio.ensure_future(stop_loop())
 
 async def main():
-    try: 
-        await gpib_device.connect()
-        version = await gpib_device.version()
-        logging.getLogger(__name__).info('Controller version: %(version)s', {'version': version})
+    try:
+        try: 
+            await gpib_device.connect()
+            version = await gpib_device.version()
+            logging.getLogger(__name__).info('Controller version: %(version)s', {'version': version})
 
-    except ConnectionRefusedError:
-        logging.getLogger(__name__).error('Could not connect to remote target. Connection refused. Is the device connected?')
+        except (ConnectionError, ConnectionRefusedError):
+            logging.getLogger(__name__).error('Could not connect to remote target. Connection refused. Is the device connected?')
+        finally:
+            await gpib_device.disconnect()    # We may call diconnect() on a non-connected gpib device
+            logging.getLogger(__name__).debug('Shutting down the main loop')
     except asyncio.CancelledError:
-        logging.getLogger(__name__).debug('Stopped the main loop')
-    finally:
-        logging.getLogger(__name__).debug('Shutting down the main loop')
-        asyncio.ensure_future(stop_loop())
-loop = asyncio.get_event_loop()
+        # If the loop is canceled, someone else is shutting us down. That someone must then take care of closing the
+        # loop.
+        pass
+    else:
+        loop.stop()
+    logging.getLogger(__name__).debug('Stopped the main loop')
 
 # Report all mistakes managing asynchronous resources.
 warnings.simplefilter('always', ResourceWarning)
@@ -69,6 +77,9 @@ logging.basicConfig(level=logging.INFO)    # Enable logs from the ip connection.
 running_tasks.append(asyncio.ensure_future(main()))
 running_tasks[-1].add_done_callback(error_handler)  # Add error handler to catch exceptions
 
-loop.run_forever()
+try:
+    loop.run_forever()
+except KeyboardInterrupt:
+  loop.run_until_complete(stop_loop())
 loop.close()
 
