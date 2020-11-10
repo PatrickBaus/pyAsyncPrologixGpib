@@ -94,14 +94,11 @@ class AsyncPrologixEthernet():
         """
         await self.__conn.write(data + b"\n")   # Append Prologix ETHERNET termination character
 
-    async def read(self, length=None):
+    async def read(self, length=None, eol_character=None):
         """
-        Read a bytestring from the controller and return it. The termination character will be stripped.
+        Read a bytestring from the controller and return it. The termination character will not be stripped.
         """
-        data = await self.__conn.read(length=length)
-        if length is None and len(data) >= 2:
-            data = data[:-2]    # strip \r\n
-        return data
+        return await self.__conn.read(length=length, eol_character=eol_character)
 
 class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
     def __init__(self, hostname, pad, port=1234, sad=None, timeout=13, send_eoi=1, eos_mode=0, ethernet_timeout=1000, loop=None):
@@ -133,6 +130,9 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
             self.timeout(self.__timeout)
         )
 
+    async def __query_command(self, command):
+        await super().write(command)
+        return (await super().read(eol_character=b"\n"))[:-2]    # strip the EOT characters (\r\n)
     def __escape_data(self, data):
         # \r, \n, \x1B (27, ESC), + need to be escaped
         # Use a regex to match them replace them using a translation map
@@ -142,26 +142,28 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         data = self.__escape_data(data)
         await super().write(data)
 
-    async def read(self, len=None):
-        await super().write(b"++read eoi")
-        return await super().read(length=len)
+    async def read(self, len=None, character=None):
+        if character is None:
+            await super().write(b"++read eoi")
+        else:
+            await super().write("++read {value:d}".format(value=ord(character)).encode('ascii'))
+        return await super().read(length=len, eol_character=self.__eot_char if self.__send_eot else None)
 
     async def set_device_mode(self, device_mode):
         assert isinstance(device_mode, DeviceMode)
         await super().write("++mode {value:d}".format(value=device_mode.value).encode('ascii'))
 
     async def get_device_mode(self):
-        await super().write(b"++mode")
-        return DeviceMode(int(await super().read()))
+        return DeviceMode(int(await self.__query_command(b"++mode")))
 
     async def set_read_after_write(self, enable):
         await super().write("++auto {value:d}".format(value=enable).encode('ascii'))
 
     async def get_read_after_write(self):
-        await super().write(b"++auto")
-        return bool(int(await super().read()))
+        return bool(int(await self.__query_command(b"++auto")))
 
     async def set_address(self, pad, sad=None):
+        assert (0<= pad <=30) and (sad==None or 0<= sad <=30)
         if sad is None:
           address = "++addr {pad:d}".format(pad=pad).encode('ascii')
         else:
@@ -174,13 +176,14 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
     async def get_address(self):
         indices = ["pad", "sad"]
         
-        await super().write(b"++addr")
+        result = await self.__query_command(b"++addr")
+
         # The result might by either "pad" or "pad sad"
         # The secondary address is offset by 96.
         # See here for the reason: http://www.ni.com/tutorial/2801/en/#:~:text=The%20secondary%20address%20is%20actually,the%20last%20bit%20is%20not
         # We return a dict looking like this {"pad": pad, "sad": None} or {"pad": pad, "sad": sad-96}
         # So we first split the string, then create a list of ints, and substract 96 from the second item (index = 1)
-        result = [int(addr)-96*i for i, addr in enumerate((await super().read()).split(b" "))]
+        result = [int(addr)-96*i for i, addr in enumerate(result.split(b" "))]
 
         # Create the dict, zip_longest pads the shorted list with None
         return dict(zip_longest(indices, result))
@@ -190,8 +193,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         self.__send_eoi = bool(int(enable))
 
     async def get_eoi(self):
-        await super().write(b"++eoi")
-        return bool(int(await super().read()))
+        return bool(int(await self.__query_command(b"++eoi")))
 
     async def set_eos_mode(self, mode):
         assert isinstance(mode, EosMode)
@@ -199,24 +201,21 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         self.__eos_mode = mode
 
     async def get_eos_mode(self):
-        await super().write(b"++eos")
-        return EosMode(int(await super().read()))
+        return EosMode(int(await self.__query_command(b"++eos")))
 
     async def set_eot(self, enable):
         await super().write("++eot_enable {value:d}".format(value=enable).encode('ascii'))
         self.__send_eot = bool(int(enable))
 
     async def get_eot(self):
-        await super().write(b"++eot_enable")
-        return bool(int(await super().read()))
+        return bool(int(await self.__query_command(b"++eot_enable")))
 
     async def set_eot_char(self, character):
         await super().write("++eot_char {value:d}".format(value=ord(character)).encode('ascii'))
         self.__eot_char = character
 
     async def get_eot_char(self):
-        await super().write(b"++eot_char")
-        return chr(int(await super().read()))
+        return chr(int(await self.__query_command(b"++eot_char")))
 
     async def remote_enable(self, enable=True):
         if bool(enable):
@@ -231,8 +230,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         await super().write(b"++loc")
 
     async def ibsta(self):
-        await super().write(b"++status")
-        return await super().read()
+        return await self.__query_command(b"++status")
 
     async def interface_clear(self):
         await super().write(b"++ifc")
@@ -244,16 +242,14 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         await super().write(b"++trg")
 
     async def version(self):
-        await super().write(b"++ver")
         # Return a unicode string
-        return (await super().read()).decode()
+        return (await self.__query_command(b"++ver")).decode()
 
     async def set_listen_only(self, enable):
         await super().write("++lon {value:d}".format(value=enable).encode('ascii'))
 
     async def get_listen_only(self):
-        await super().write(b"++lon")
-        return bool(int(await super().read()))
+        return bool(int(await self.__query_command(b"++lon")))
 
     async def serial_poll(self, pad=None, sad=None):
         command = b"++spoll"
@@ -264,11 +260,10 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
 
         await super().write(command)
 
-        return await super().read()
+        return await self.__query_command(command)
 
     async def test_srq(self):
-        await super().write(b"++srq")
-        return bool(int(await super().read()))
+        return bool(int(await self.__query_command(b"++srq")))
 
     async def reset(self):
         await super().write(b"++rst")
@@ -277,5 +272,4 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         await super().write("++savecfg {value:d}".format(value=enable).encode('ascii'))
 
     async def get_save_config(self):
-        await super().write(b"++savecfg")
-        return bool(int(await super().read()))
+        return bool(int(await self.__query_command(b"++savecfg")))

@@ -62,12 +62,13 @@ class AsyncIPConnection(object):
         else:
             raise ConnectionError('Prologix IP Connection not connected')
 
-    async def read(self, length=None):
+    async def read(self, length=None, eol_character=None):
+        eol_character = self.SEPARATOR if eol_character is None else eol_character
         try:
             with async_timeout.timeout(self.__timeout) as cm:
                 try:
                     if length is None:
-                        data = await self.__reader.readuntil(self.SEPARATOR)
+                        data = await self.__reader.readuntil(eol_character)
                     else:
                         data = await self.__reader.readexactly(length)
                     self.__logger.debug("Data read: %(data)s", {'data': data})
