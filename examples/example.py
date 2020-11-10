@@ -27,7 +27,7 @@ sys.path.append("..") # Adds main directory to python modules path.
 from pyAsyncPrologixGpib.pyAsyncPrologixGpib import AsyncPrologixGpibEthernetController
 
 # The primary address (e.g. 22) can be anything. There is no device connection required for this example
-gpib_device = AsyncPrologixGpibEthernetController('127.0.0.1', pad=22)
+gpib_device = AsyncPrologixGpibEthernetController('192.168.1.104', pad=22)
 
 async def main():
     try: 

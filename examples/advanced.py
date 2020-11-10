@@ -26,12 +26,13 @@ import sys
 sys.path.append("..") # Adds main directory to python modules path.
 
 # Devices
-from pyAsyncPrologixGpib.pyAsyncPrologixGpib import AsyncPrologixGpibEthernetController
+from pyAsyncPrologixGpib.pyAsyncPrologixGpib import AsyncPrologixGpibEthernetController, EosMode
 
 running_tasks = []
 loop = asyncio.get_event_loop()
 # The primary address (e.g. 22) can be anything. There is no device connection required for this example
-gpib_device = AsyncPrologixGpibEthernetController('127.0.0.1', pad=22)
+ip_address = '192.168.1.104'
+gpib_device = AsyncPrologixGpibEthernetController(ip_address, pad=27, timeout=1000, eos_mode=EosMode.APPEND_NONE)
 
 async def stop_loop():
     # Clean up: Disconnect ip connection and stop the consumers
@@ -53,6 +54,8 @@ async def main():
     try:
         try: 
             await gpib_device.connect()
+            timeout  = await gpib_device.get_eot()
+            logging.getLogger(__name__).info('GPIB timeout: %(timeout)d ms', {'timeout': timeout})
             version = await gpib_device.version()
             logging.getLogger(__name__).info('Controller version: %(version)s', {'version': version})
 
@@ -72,7 +75,7 @@ async def main():
 # Report all mistakes managing asynchronous resources.
 warnings.simplefilter('always', ResourceWarning)
 loop.set_debug(enabled=True)    # Raise all execptions and log all callbacks taking longer than 100 ms
-logging.basicConfig(level=logging.INFO)    # Enable logs from the ip connection. Set to debug for even more info
+logging.basicConfig(level=logging.DEBUG)    # Enable logs from the ip connection. Set to logging.INFO for less verbose output
 
 running_tasks.append(asyncio.ensure_future(main()))
 running_tasks[-1].add_done_callback(error_handler)  # Add error handler to catch exceptions
