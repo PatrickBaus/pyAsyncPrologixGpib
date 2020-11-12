@@ -53,14 +53,12 @@ escape_pattern = re.compile(b"|".join(map(re.escape, translation_map.keys())))
 class AsyncPrologixEthernet():
     """
     The name can either be an ip address or a hostname. The default port is 1234. The timeout is in ms.
-    If a specific loop is required, it can be passed as a parameter as well.
     """
-    def __init__(self, hostname, port=1234, timeout=1000, loop=None):
-        self.__loop = loop
+    def __init__(self, hostname, port=1234, timeout=1000):
         self.__hostname = hostname
         self.__port = port
 
-        self.__conn = AsyncIPConnection(timeout=timeout/1000, loop=self.__loop)   # timeout is in seconds
+        self.__conn = AsyncIPConnection(timeout=timeout/1000)   # timeout is in seconds
 
     @property
     def is_connected(self):
@@ -101,8 +99,8 @@ class AsyncPrologixEthernet():
         return await self.__conn.read(length=length, eol_character=eol_character)
 
 class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
-    def __init__(self, hostname, pad, port=1234, sad=None, timeout=13, send_eoi=1, eos_mode=0, ethernet_timeout=1000, loop=None):
-        super().__init__(hostname, port, timeout+ethernet_timeout, loop)
+    def __init__(self, hostname, pad, port=1234, sad=None, timeout=13, send_eoi=1, eos_mode=0, ethernet_timeout=1000):
+        super().__init__(hostname, port, timeout+ethernet_timeout)
         self.__timeout = timeout
 
         self.__pad = pad

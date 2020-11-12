@@ -67,8 +67,7 @@ class AsyncIPConnection(object):
         else:
             return None
 
-    def __init__(self, timeout=None, loop=None):
-        self.__loop = loop
+    def __init__(self, timeout=None):
         self.__host = None
         self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout
 
@@ -110,12 +109,10 @@ class AsyncIPConnection(object):
         # For example localhost and 127.0.0.1 will not be shared, because localhost might map to
         # either ::1 or 127.0.0.1
 
-        # TODO add lock
         async with AsyncIPConnection._connection_pool_lock:
             if (host, port) not in AsyncIPConnection._connection_pool:
                 with async_timeout.timeout(self.__timeout) as cm:
                     try:
-                        reader, writer = await asyncio.open_connection(host, port, loop=self.__loop)
                     except asyncio.CancelledError:
                         if cm.expired:
                             raise asyncio.TimeoutError() from None
@@ -135,6 +132,7 @@ class AsyncIPConnection(object):
         self.__host = (host, port)
 
         self.logger.info('Prologix IP connection established to host %(host)s:%{port}d', {'host': host, 'port': port})
+                            reader, writer = await asyncio.open_connection(host, port)
 
     async def disconnect(self):
         if self.__host is not None:
