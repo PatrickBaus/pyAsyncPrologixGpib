@@ -60,13 +60,6 @@ class AsyncPrologixEthernet():
 
         self.__conn = AsyncSharedIPConnection(timeout=timeout/1000)   # timeout is in seconds
 
-    @property
-    def is_connected(self):
-        """
-        Returns True if the connection has been established.
-        """
-        return self.__conn.is_connected
-
     async def connect(self):
         """
         Connect to the ethernet controller.
@@ -101,20 +94,17 @@ class AsyncPrologixEthernet():
 class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
     def __init__(self, hostname, pad, port=1234, sad=None, timeout=13, send_eoi=1, eos_mode=0, ethernet_timeout=1000):
         super().__init__(hostname, port, timeout+ethernet_timeout)
-        self.__timeout = timeout
 
         self.__state = {
-          'pad'      : pad,
-          'sad'      : sad,
-          'send_eoi' : bool(int(send_eoi)),
-          'send_eot' : False,
-          'eot_char' : b"\n",
-          'eos_mode' : EosMode(eos_mode),
+          'pad'             : pad,
+          'sad'             : sad,
+          'send_eoi'        : bool(int(send_eoi)),
+          'send_eot'        : False,
+          'eot_char'        : b"\n",
+          'eos_mode'        : EosMode(eos_mode),
+          'timeout'         : timeout,
+          'read_after_write': False,
         }
-        self.__send_eoi = bool(int(send_eoi))
-        self.__send_eot = False
-        self.__eot_char = b"\n"
-        self.__eos_mode = EosMode(eos_mode)
 
     async def connect(self):
         """
@@ -123,15 +113,15 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         """
         await super().connect()
         await asyncio.gather(
-            self.set_save_config(False),    # Disable saving the config to EEPROM by default, so save EEPROM writes
+            self.set_save_config(False),    # Disable saving the config to EEPROM by default to save EEPROM writes
             self.set_device_mode(DeviceMode.CONTROLLER),
             self.set_address(self.__state['pad'], self.__state['sad']),
-            self.set_read_after_write(False),
-            self.set_eoi(self.__send_eoi),
-            self.set_eot(self.__send_eot),
-            self.set_eot_char(self.__eot_char),
-            self.set_eos_mode(self.__eos_mode),
-            self.timeout(self.__timeout)
+            self.set_read_after_write(self.__state['read_after_write']),
+            self.set_eoi(self.__state['send_eoi']),
+            self.set_eot(self.__state['send_eot']),
+            self.set_eot_char(self.__state['eot_char']),
+            self.set_eos_mode(self.__state['eos_mode']),
+            self.timeout(self.__state['timeout'])
         )
 
     async def __query_command(self, command):
@@ -192,6 +182,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         immediately asked to TALK (enable==True) or LISTEN (enable==False).
         """
         await super().write("++auto {value:d}".format(value=enable).encode('ascii'))
+        self.__state['read_after_write'] = enable
 
     async def get_read_after_write(self):
         """
@@ -240,7 +231,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         or need the EOI line to be signaled after each command. This is enabled by default.
         """
         await super().write("++eoi {value:d}".format(value=enable).encode('ascii'))
-        self.__send_eoi = bool(int(enable))
+        self.__state['send_eoi'] = bool(int(enable))
 
     async def get_eoi(self):
         """
@@ -256,7 +247,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         """
         assert isinstance(mode, EosMode)
         await super().write("++eos {value:d}".format(value=mode.value).encode('ascii'))
-        self.__eos_mode = mode
+        self.__state['eos_mode'] = mode
 
     async def get_eos_mode(self):
         """
@@ -271,7 +262,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         not signal the EOI. Note: This feature might be problematic when the transfer type is binary.
         """
         await super().write("++eot_enable {value:d}".format(value=enable).encode('ascii'))
-        self.__send_eot = bool(int(enable))
+        self.__state['send_eot'] = bool(int(enable))
 
     async def get_eot(self):
         """
@@ -285,7 +276,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         0x80 to 0xFF. Note: This might not be the case for binary transmissions.
         """
         await super().write("++eot_char {value:d}".format(value=ord(character)).encode('ascii'))
-        self.__eot_char = character
+        self.__state['eot_char'] = character
 
     async def get_eot_char(self):
         """
@@ -307,7 +298,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         """
         assert (1 <= value <= 3000)
         await super().write("++read_tmo_ms {value:d}".format(value=value).encode('ascii'))
-        self.__timeout = value
+        self.__state['timeout'] = value
 
     async def ibloc(self):
         """
