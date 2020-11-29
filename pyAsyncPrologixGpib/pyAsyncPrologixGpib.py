@@ -22,7 +22,7 @@ from enum import Enum, unique
 from itertools import zip_longest
 import re   # needed to escape characters in the byte stream
 
-from .ip_connection import AsyncIPConnection
+from .ip_connection import AsyncSharedIPConnection
 
 @unique
 class DeviceMode(Enum):
@@ -58,7 +58,7 @@ class AsyncPrologixEthernet():
         self.__hostname = hostname
         self.__port = port
 
-        self.__conn = AsyncIPConnection(timeout=timeout/1000)   # timeout is in seconds
+        self.__conn = AsyncSharedIPConnection(timeout=timeout/1000)   # timeout is in seconds
 
     @property
     def is_connected(self):
@@ -103,8 +103,14 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         super().__init__(hostname, port, timeout+ethernet_timeout)
         self.__timeout = timeout
 
-        self.__pad = pad
-        self.__sad = sad
+        self.__state = {
+          'pad'      : pad,
+          'sad'      : sad,
+          'send_eoi' : bool(int(send_eoi)),
+          'send_eot' : False,
+          'eot_char' : b"\n",
+          'eos_mode' : EosMode(eos_mode),
+        }
         self.__send_eoi = bool(int(send_eoi))
         self.__send_eot = False
         self.__eot_char = b"\n"
@@ -119,7 +125,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         await asyncio.gather(
             self.set_save_config(False),    # Disable saving the config to EEPROM by default, so save EEPROM writes
             self.set_device_mode(DeviceMode.CONTROLLER),
-            self.set_address(self.__pad, self.__sad),
+            self.set_address(self.__state['pad'], self.__state['sad']),
             self.set_read_after_write(False),
             self.set_eoi(self.__send_eoi),
             self.set_eot(self.__send_eot),
@@ -207,8 +213,8 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
           address = "++addr {pad:d} {sad:d}".format(pad=pad, sad=sad+96).encode('ascii')
 
         await super().write(address)
-        self.__pad = pad
-        self.__sad = sad
+        self.__state['pad'] = pad
+        self.__state['sad'] = sad
 
     async def get_address(self):
         """
