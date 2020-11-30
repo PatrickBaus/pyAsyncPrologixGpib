@@ -54,11 +54,11 @@ class AsyncPrologixEthernet():
     """
     The name can either be an ip address or a hostname. The default port is 1234. The timeout is in ms.
     """
-    def __init__(self, hostname, port=1234, timeout=1000):
+    def __init__(self, hostname, port=1234, ethernet_timeout=1000):
         self.__hostname = hostname
         self.__port = port
 
-        self.__conn = AsyncSharedIPConnection(timeout=timeout/1000)   # timeout is in seconds
+        self.__conn = AsyncSharedIPConnection(timeout=ethernet_timeout/1000)   # timeout is in seconds
 
     async def connect(self):
         """
@@ -91,10 +91,8 @@ class AsyncPrologixEthernet():
         """
         return await self.__conn.read(length=length, eol_character=eol_character)
 
-class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
-    def __init__(self, hostname, pad, port=1234, sad=None, timeout=13, send_eoi=1, eos_mode=0, ethernet_timeout=1000):
-        super().__init__(hostname, port, timeout+ethernet_timeout)
-
+class AsyncPrologixGpib():
+    def __init__(self, pad, sad=None, timeout=13, send_eoi=1, eos_mode=0, **kwargs):
         self.__state = {
           'pad'             : pad,
           'sad'             : sad,
@@ -105,6 +103,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
           'timeout'         : timeout,
           'read_after_write': False,
         }
+        super().__init__(**kwargs)
 
     async def connect(self):
         """
@@ -114,7 +113,6 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         await super().connect()
         await asyncio.gather(
             self.set_save_config(False),    # Disable saving the config to EEPROM by default to save EEPROM writes
-            self.set_device_mode(DeviceMode.CONTROLLER),
             self.set_address(self.__state['pad'], self.__state['sad']),
             self.set_read_after_write(self.__state['read_after_write']),
             self.set_eoi(self.__state['send_eoi']),
@@ -161,14 +159,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
             await super().write(b"++read eoi")
         else:
             await super().write("++read {value:d}".format(value=ord(character)).encode('ascii'))
-        return await super().read(length=len, eol_character=self.__eot_char if self.__send_eot else None)
-
-    async def set_device_mode(self, device_mode):
-        """
-        Either configure the the GPIB controller as a controller or device. The parameter is a DeviceMode enum.
-        """
-        assert isinstance(device_mode, DeviceMode)
-        await super().write("++mode {value:d}".format(value=device_mode.value).encode('ascii'))
+        return await super().read(length=len, eol_character=self.__state['eot_char'] if self.__state['send_eot'] else None)   #TODO: Check eot <> eol
 
     async def get_device_mode(self):
         """
@@ -338,19 +329,6 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         # Return a unicode string
         return (await self.__query_command(b"++ver")).decode()
 
-    async def set_listen_only(self, enable):
-        """
-        Set the controller to liste-only mode. This will cause the controller to listen to all traffic,
-        irrespective of the current address.
-        """
-        await super().write("++lon {value:d}".format(value=enable).encode('ascii'))
-
-    async def get_listen_only(self):
-        """
-        Returns True if the controller is in listen-only mode.
-        """
-        return bool(int(await self.__query_command(b"++lon")))
-
     async def serial_poll(self, pad=None, sad=None):
         """
         Perform a serial poll of the instrument at the given address. If no address is given poll the current instrument.
@@ -392,3 +370,56 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixEthernet):
         DeviceMode, GPIB address, read-after-write, EOI, EOS, EOT, EOT character and the timeout
         """
         return bool(int(await self.__query_command(b"++savecfg")))
+
+
+class AsyncPrologixGpibController(AsyncPrologixGpib):
+    async def connect(self):
+        await super().connect()
+        await self.__set_device_mode(DeviceMode.CONTROLLER)
+
+    async def __set_device_mode(self, device_mode):
+        """
+        Either configure the the GPIB controller as a controller or device. The parameter is a DeviceMode enum.
+        """
+        assert isinstance(device_mode, DeviceMode)
+        await super().write("++mode {value:d}".format(value=device_mode.value).encode('ascii'))
+
+
+class AsyncPrologixGpibDevice(AsyncPrologixGpib):
+    async def connect(self):
+        await super().connect()
+        await self.__set_device_mode(DeviceMode.DEVICE)
+
+    async def __set_device_mode(self, device_mode):
+        """
+        Either configure the the GPIB controller as a controller or device. The parameter is a DeviceMode enum.
+        """
+        assert isinstance(device_mode, DeviceMode)
+        await super().write("++mode {value:d}".format(value=device_mode.value).encode('ascii'))
+
+    async def set_listen_only(self, enable):
+        """
+        Set the controller to liste-only mode. This will cause the controller to listen to all traffic,
+        irrespective of the current address.
+        """
+        await super().write("++lon {value:d}".format(value=enable).encode('ascii'))
+
+    async def get_listen_only(self):
+        """
+        Returns True if the controller is in listen-only mode.
+        """
+        return bool(int(await self.__query_command(b"++lon")))
+
+
+class AsyncPrologixGpibEthernetController(AsyncPrologixGpibController, AsyncPrologixEthernet):
+    def __init__(self, hostname, pad, port=1234, sad=None, timeout=13, send_eoi=1, eos_mode=0, ethernet_timeout=1000):
+        super().__init__(
+          hostname=hostname,
+          pad=pad,
+          port=port,
+          sad=sad,
+          timeout=timeout,
+          send_eoi=send_eoi,
+          eos_mode=eos_mode,
+          ethernet_timeout=timeout+ethernet_timeout
+        )
