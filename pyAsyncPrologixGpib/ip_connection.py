@@ -154,6 +154,10 @@ class AsyncIPConnection():
             raise NotConnectedError('Prologix IP Connection not connected')
 
     async def connect(self, hostname, port):
+        """
+        Connect to the host. If a conneciton is already established, connect() will return without
+        delay.
+        """
         if not self.is_connected:
             with async_timeout.timeout(self.__timeout) as cm:
                 try:
@@ -175,7 +179,7 @@ class AsyncIPConnection():
 
                 self.__host = (hostname, port)
 
-            self.logger.info('Prologix IP connection established to host %(hostname)s:%{port}d', {'hostname': hostname, 'port': port})
+            self.logger.info('Prologix IP connection established to host %s:%d', hostname, port)
 
     async def __disconnect(self):
         if self.is_connected:
@@ -184,8 +188,7 @@ class AsyncIPConnection():
             finally:
                 # We guarantee, that the connection is removed
                 self.__host, self.__writer, self.__reader = None, None, None
-
-            self.logger.info('Prologix IP connection closed')
+                self.logger.info('Prologix IP connection closed')
 
     async def disconnect(self):
         await self.__disconnect()
@@ -215,17 +218,25 @@ class AsyncPooledIPConnection(AsyncIPConnection):
     def __init__(self, timeout=None):
         super().__init__(timeout)
         self.__clients = set()
+        self.meta = {}    # Meta data used to store connection specific states
         self.__lock = asyncio.Lock()
         self.__logger = logging.getLogger(__name__)
 
     async def connect(self, hostname, port, client):
+        """
+        Connect to the host. This function can be called multiple times by the client. It
+        will return immediately if already connected and if no one is holding the lock.
+        """
         if not client in self.__clients:
             # First add ourselves to the list of clients, so the connection will not be released, while we wait for
             # the release of the lock
             self.__clients.add(client)
 
-        # Lock the connection and connect, this will return immediately, if we are connected.
-        # We need the lock, because someone might be connecting or disconnecting at the same time
+        # Lock the connection and connect, this will return immediately, if we are connected and
+        # no one is holding the lock.
+        # We need the lock, because someone might be in the process of connecting or disconnecting
+        # at the same time. In this case, we will either wait for the connection or reconnect
+        # afterwards.
         try:
             async with self.__lock:
                 await super().connect(hostname, port)
@@ -250,26 +261,37 @@ class AsyncPooledIPConnection(AsyncIPConnection):
 
 
 class AsyncSharedIPConnection():
-    def __init__(self, timeout=None):
+    @property
+    def meta(self):
+        if self.__conn is None:
+            raise NotConnectedError('Prologix IP Connection not connected')
+        else:
+            return self.__conn.meta
+
+    def __init__(self, hostname, port=1234, timeout=None):
         self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout
-        self.__host = None
+        self.__hostname = hostname
+        self.__port = port
         self.__conn = None
 
-    async def connect(self, hostname, port=1234):
-        self.__conn = await AsyncIPConnectionPool.connect(hostname=hostname, port=port, timeout=self.__timeout, client=self)
-        self.__host = (hostname, port)
+    async def connect(self):
+        self.__conn = await AsyncIPConnectionPool.connect(hostname=self.__hostname, port=self.__port, timeout=self.__timeout, client=self)
 
     async def disconnect(self):
         try:
             if self.__conn is not None:
-                hostname, port = self.__host
-                await AsyncIPConnectionPool.disconnect(hostname=hostname, port=port, client=self)
+                await AsyncIPConnectionPool.disconnect(hostname=self.__hostname, port=self.__port, client=self)
         finally:
-            self.__host = None
             self.__conn = None
 
     async def write(self, data):
-        await self.__conn.write(data)
+        if self.__conn is None:
+            raise NotConnectedError('Prologix IP Connection not connected')
+        else:
+            await self.__conn.write(data)
 
     async def read(self, length=None, eol_character=None):
-        return await self.__conn.read(length, eol_character)
+        if self.__conn is None:
+            raise NotConnectedError('Prologix IP Connection not connected')
+        else:
+            return await self.__conn.read(length, eol_character)

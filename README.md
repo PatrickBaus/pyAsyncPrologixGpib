@@ -32,7 +32,7 @@ await gpib_device.disconnect()
 
 Sending a "my command" command to address 22 (as set up previously)
 ```python
-await await gpib_device.write(msg)("my command")
+await await gpib_device.write("my command")
 ```
 
 Reading data from address 22
@@ -58,10 +58,10 @@ async def main():
         version = await gpib_device.version()
         print("Controller version: ", version)
     except (ConnectionError, ConnectionRefusedError):
-        print("Could not connect to remote target. Connection refused. Is the device connected?")
+        print("Could not connect to remote target. Is the device connected?")
     finally:
-        # Disconnect from the GPIB controller. We may safely call diconnect() on a non-connected gpib device, that
-        # means in case of a connection error
+        # Disconnect from the GPIB controller. We may safely call diconnect() on a non-connected gpib device
+        # in case of a connection error
         await gpib_device.disconnect()
 
 asyncio.run(main())
@@ -70,11 +70,40 @@ asyncio.run(main())
 See [examples/](examples/) for more working examples.
 
 ## Support for Multiple Devices
-The Prologix GPIB adapter supports talking to multiple devices, but there are caveats. First of all there are hardware limitations, as the Prologix adapters do not have line drivers. So the GPIB cable length and number of devices is seriously limited. On the software side, there is no way to read or write a specific device with a single command. One has to switch back and forth using the '++adr' command. This is not so much of a problem with the USB adapter as one instance of a program typically has exclusive access to the serial resource. From the library point of view, the only thing one would have to do is to keep track of the internal state of the adapter and update the controller to match different device setups, when switching between devices. Regarding the Ethernet controller, the problem is escalated, because 'anyone' on the network can change the internal state of the adapter and there is no way to track this.
+The Prologix GPIB adapter supports talking to multiple devices, but there is a are (theoretical) hardware limits. The Prologix adapters do not have line drivers, so only a limited number of devices can be driven using one controller.
 
-To avoid both the hardware limitations and the software issues, I recommend using one controller per device.
+On the software side, there is full support for multiple devices and the driver will switch between different addresses transparently. The driver internally manages the connection and keeps track of the GPIB controller state and manages the state for each gpib object. It is important, that the driver is the only client editing the state of the GPIB controller. Otherwise, the driver state and the controller state may get out of sync.
 
-Although, this module does not have integrated support for multiple instances. It is still possible to create them and use multiple devices with it. One only has to make sure to call to the 'set_address()' function and all other configuration related functions before talking to the devices.
+Example:
+```python
+import asyncio
+
+# Devices
+from pyAsyncPrologixGpib.pyAsyncPrologixGpib import AsyncPrologixGpibEthernetController
+
+gpib_device1 = AsyncPrologixGpibEthernetController('127.0.0.1', pad=22)
+gpib_device2 = AsyncPrologixGpibEthernetController('127.0.0.1', pad=10)
+
+async def main():
+    try: 
+        # Connect to the two devices. This call must be done in the loop.
+        await asyncio.gather(
+          gpib_device1.connect(),
+          gpib_device2.connect(),
+        )
+        await gpib_device1.write(b"*IDN?")    # Automatically changes address to device 22
+        print(await gpib_device1.read())
+        await gpib_device2.write(b"*IDN?")    # Automatically changes address to device 10
+        print(await gpib_device2.read())
+    except (ConnectionError, ConnectionRefusedError):
+        print("Could not connect to remote target. Is the device connected?")
+    finally:
+        # Disconnect from the GPIB controller. We may safely call diconnect() on a non-connected gpib device,
+        # in case of a connection error
+        await gpib_device.disconnect()
+
+asyncio.run(main())
+```
 
 ## Versioning
 
