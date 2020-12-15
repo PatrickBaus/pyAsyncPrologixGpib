@@ -137,7 +137,7 @@ class AsyncIPConnection():
                         else:
                             raise
             except asyncio.TimeoutError:
-                self.logger.error('Timout while reading data.')
+                self.logger.error('Timeout (>%d s) while reading data.', self.__timeout)
                 raise
             except asyncio.IncompleteReadError as e:
                 if len(e.partial) > 0:

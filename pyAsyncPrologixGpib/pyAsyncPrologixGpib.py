@@ -45,7 +45,7 @@ translation_map = {
     b"\x1B": b"\x1B\x1B",
 }
 
-# Generate a regex pattern which, wich maches on either of the characters (|).
+# Generate a regex pattern which maches either of the characters (|).
 # Characters like "\n" need to be escaped when used in a regex, so we run re.ecape on
 # all characters first.
 escape_pattern = re.compile(b"|".join(map(re.escape, translation_map.keys())))
@@ -328,7 +328,6 @@ class AsyncPrologixGpib():
     async def __timeout(self, value):
         """
         Set the GPIB timeout in ms for a read. This is not the network timeout, which comes on top of that.
-        The network timeout is 1 second.
         """
         assert (1 <= value <= 3000)
         await self.__write("++read_tmo_ms {value:d}".format(value=value).encode('ascii'))
@@ -492,13 +491,12 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
 
 
 class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
-    def __init__(self, hostname, pad, port=1234, sad=None, timeout=13, send_eoi=1, eos_mode=0, ethernet_timeout=1000):
-        conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=(timeout+ethernet_timeout)/1000)   # timeout is in seconds
+    def __init__(self, hostname, pad, port=1234, sad=None, send_eoi=1, eos_mode=0, ethernet_timeout=1000):
+        conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=ethernet_timeout/1000)   # timeout is in seconds
         super().__init__(
           conn=conn,
           pad=pad,
           device_mode=DeviceMode.DEVICE,
-          timeout=timeout,
           send_eoi=send_eoi,
           eos_mode=eos_mode,
         )
