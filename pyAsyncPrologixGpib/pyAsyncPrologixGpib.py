@@ -55,7 +55,7 @@ class AsyncPrologixGpib():
     def _conn(self):
         return self.__conn
 
-    def __init__(self, conn, pad, device_mode, sad=None, timeout=13, send_eoi=1, eos_mode=0):
+    def __init__(self, conn, pad, device_mode, sad=0, timeout=13, send_eoi=1, eos_mode=0):
         self.__conn = conn
         self.__state = {
           'pad'             : pad,
@@ -190,7 +190,7 @@ class AsyncPrologixGpib():
         async with self.__conn.meta["lock"]:
             return bool(int(await self.__query_command(b"++auto")))
 
-    async def set_address(self, pad, sad=None):
+    async def set_address(self, pad, sad=0):
         """
         Change the current address of the GPIB controller. If set to device mode, this is the address the controller
         is listening to. If set to controller mode, it is the address of the device being to talked to. The parameters
@@ -200,12 +200,12 @@ class AsyncPrologixGpib():
         async with self.__conn.meta["lock"]:
             await self.__set_address(pad, sad)
 
-    async def __set_address(self, pad, sad=None):
-        assert (0<= pad <=30) and (sad==None or 0<= sad <=30)
-        if sad is None:
+    async def __set_address(self, pad, sad=0):
+        assert (0<= pad <=30) and (sad==0 or 0x60<= sad <=0x7e)
+        if sad == 0:
           address = "++addr {pad:d}".format(pad=pad).encode('ascii')
         else:
-          address = "++addr {pad:d} {sad:d}".format(pad=pad, sad=sad+96).encode('ascii')
+          address = "++addr {pad:d} {sad:d}".format(pad=pad, sad=sad).encode('ascii')
 
         await self.__write(address)
         self.__state['pad'] = pad
@@ -222,14 +222,14 @@ class AsyncPrologixGpib():
             result = await self.__query_command(b"++addr")
 
         # The result might by either "pad" or "pad sad"
-        # The secondary address is offset by 96.
+        # The secondary address is offset by 0x60 (96).
         # See here for the reason: http://www.ni.com/tutorial/2801/en/#:~:text=The%20secondary%20address%20is%20actually,the%20last%20bit%20is%20not
-        # We return a dict looking like this {"pad": pad, "sad": None} or {"pad": pad, "sad": sad-96}
-        # So we first split the string, then create a list of ints, and substract 96 from the second item (index = 1)
-        result = [int(addr)-96*i for i, addr in enumerate(result.split(b" "))]
+        # We return a dict looking like this {"pad": pad, "sad": 0} or {"pad": pad, "sad": sad}
+        # So we first split the string, then create a list of ints
+        result = [int(addr) for i, addr in enumerate(result.split(b" "))]
 
-        # Create the dict, zip_longest pads the shorted list with None
-        return dict(zip_longest(indices, result))
+        # Create the dict, zip_longest pads the shorted list with 0
+        return dict(zip_longest(indices, result, fillvalue=0))
 
     async def set_eoi(self, enable):
         """
@@ -393,15 +393,16 @@ class AsyncPrologixGpib():
             # Return a unicode string
             return (await self.__query_command(b"++ver")).decode()
 
-    async def serial_poll(self, pad=None, sad=None):
+    async def serial_poll(self, pad=0, sad=0):
         """
         Perform a serial poll of the instrument at the given address. If no address is given poll the current instrument.
         """
+        assert (0<= pad <=30) and (sad==0 or 0x60<= sad <=0x7e)
         command = b"++spoll"
-        if pad is not None:
+        if pad != 0:
             command += b" " + bytes(str(int(pad)), 'ascii')
-            if sad is not None:
-                command += b" " + bytes(str(int(sad + 96)), 'ascii')
+            if sad != 0:
+                command += b" " + bytes(str(int(sad)), 'ascii')
             async with self.__conn.meta["lock"]:
                 return await self.__query_command(command)
         else:
@@ -466,7 +467,7 @@ class AsyncPrologixGpib():
 
 
 class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
-    def __init__(self, hostname, pad, port=1234, sad=None, timeout=13, send_eoi=1, eos_mode=0, ethernet_timeout=1000):
+    def __init__(self, hostname, pad, port=1234, sad=0, timeout=13, send_eoi=1, eos_mode=0, ethernet_timeout=1000):
         conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=(timeout+ethernet_timeout)/1000)   # timeout is in seconds
         super().__init__(
           conn=conn,
@@ -491,7 +492,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
 
 
 class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
-    def __init__(self, hostname, pad, port=1234, sad=None, send_eoi=1, eos_mode=0, ethernet_timeout=1000):
+    def __init__(self, hostname, pad, port=1234, sad=0, send_eoi=1, eos_mode=0, ethernet_timeout=1000):
         conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=ethernet_timeout/1000)   # timeout is in seconds
         super().__init__(
           conn=conn,
@@ -525,7 +526,7 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
     async def timeout(self, value):
         raise TypeError("Not supported in device mode")
 
-    async def serial_poll(self, pad=None, sad=None):
+    async def serial_poll(self, pad=0, sad=0):
         raise TypeError("Not supported in device mode")
 
     async def test_srq(self):
