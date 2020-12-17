@@ -291,7 +291,8 @@ class AsyncPrologixGpib():
         """
         Returns true, if the controller appends a user specified character after receiving an EOI.
         """
-        return bool(int(await self.__query_command(b"++eot_enable")))
+        async with self.__conn.meta["lock"]:
+            return bool(int(await self.__query_command(b"++eot_enable")))
 
     async def set_eot_char(self, character):
         """
@@ -378,7 +379,7 @@ class AsyncPrologixGpib():
 
     async def clear(self):
         """
-        Send the Selected Device Clear (SDC) event and the device to clear its input and output buffer.
+        Send the Selected Device Clear (SDC) event, which orders the device to clear its input and output buffer.
         """
         async with self.__conn.meta["lock"]:
             await self.__ensure_state()
@@ -394,7 +395,7 @@ class AsyncPrologixGpib():
 
     async def version(self):
         """
-        Return the version string of the Prologix GPIB controller
+        Return the version string of the Prologix GPIB controller.
         """
         async with self.__conn.meta["lock"]:
             # Return a unicode string
@@ -465,7 +466,7 @@ class AsyncPrologixGpib():
 
     async def __set_device_mode(self, device_mode):
         """
-        Either configure the the GPIB controller as a controller or device. The parameter is a DeviceMode enum.
+        Either configure the GPIB controller as a controller or device. The parameter is a DeviceMode enum.
         """
         assert isinstance(device_mode, DeviceMode)
         await self.__write("++mode {value:d}".format(value=device_mode.value).encode('ascii'))
