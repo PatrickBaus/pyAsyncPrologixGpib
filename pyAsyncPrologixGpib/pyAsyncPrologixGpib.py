@@ -496,7 +496,7 @@ class AsyncPrologixGpib():
 
 
 class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
-    def __init__(self, hostname, pad, port=1234, sad=0, timeout=13, send_eoi=1, eos_mode=0, ethernet_timeout=1000):
+    def __init__(self, hostname, pad, port=1234, sad=0, timeout=13, send_eoi=1, eos_mode=0, ethernet_timeout=1000):   # timeout is in ms
         conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=(timeout+ethernet_timeout)/1000)   # timeout is in seconds
         super().__init__(
           conn=conn,
@@ -521,7 +521,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
 
 
 class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
-    def __init__(self, hostname, pad, port=1234, sad=0, send_eoi=1, eos_mode=0, ethernet_timeout=1000):
+    def __init__(self, hostname, pad, port=1234, sad=0, send_eoi=1, eos_mode=0, ethernet_timeout=1000):   # timeout is in ms
         conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=ethernet_timeout/1000)   # timeout is in seconds
         super().__init__(
           conn=conn,
