@@ -318,8 +318,12 @@ class AsyncPrologixGpib():
         """
         Set the device to remote mode, typically disabling the front panel.
         """
-        if bool(enable):
-          await self.__write(b"++llo")
+        async with self.__conn.meta["lock"]:
+            await self.__ensure_state()
+            if bool(enable):
+                await self.__write(b"++llo")
+            else:
+                await self.__ibloc()
 
     async def timeout(self, value):
         async with self.__conn.meta["lock"]:
@@ -334,13 +338,16 @@ class AsyncPrologixGpib():
         self.__state['timeout'] = value
         self.__conn.meta['timeout'] = value
 
+    async def __ibloc(self):
+        await self.__write(b"++loc")
+
     async def ibloc(self):
         """
         Set the device to local mode, return control to the front panel.
         """
         async with self.__conn.meta["lock"]:
             await self.__ensure_state()
-            await self.__write(b"++loc")
+            await self.__ibloc()
 
     async def get_status(self):
         """
