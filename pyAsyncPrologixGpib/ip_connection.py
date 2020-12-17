@@ -149,7 +149,7 @@ class AsyncIPConnection():
                         await self.__disconnect()
                     except:
                         pass
-                    raise ConnectionLostError("Prologix IP Connection error. The host did not reply.", host=host, port=port) from None
+                    raise ConnectionLostError("Prologix IP Connection error. The host {}:{:d} did not reply.".format(*self.__host)) from None
         else:
             raise NotConnectedError('Prologix IP Connection not connected')
 
