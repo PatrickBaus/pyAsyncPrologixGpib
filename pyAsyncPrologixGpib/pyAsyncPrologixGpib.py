@@ -385,13 +385,34 @@ class AsyncPrologixGpib():
             await self.__ensure_state()
             await self.__write(b"++clr")
 
-    async def trigger(self):
+    async def trigger(self, devices=()):
         """
-        Trigger the selected instrument
+        Trigger the selected instrument, or if specified a list of devices.
+        The list of devices can either be a list (or tuple) of pads or a list/tuple of lists/tuples of pads and sads.
+        Mixing is allowed as well.
+        Examples: devices=(22,10) will trigger pad 22 and 10
+                  devices=((22,96),10) will trigger (pad 22, sad 96) and pad 10
         """
-        async with self.__conn.meta["lock"]:
-            await self.__ensure_state()
-            await self.__write(b"++trg")
+        assert (len(devices) <= 15)
+        if len(devices) == 0:
+            async with self.__conn.meta["lock"]:
+                # No need to call __ensure_state(), as we will trigger the device by its address
+                command = b"++trg " + bytes(str(self.__state['pad']), 'ascii')
+                if self.__state['sad'] != 0:
+                    command += b" " + bytes(str(self.__state['sad']), 'ascii')
+                await self.__write(command)
+        else:
+            command = b"++trg"
+            for device in devices:
+                if isinstance(device, (list, tuple)):
+                    pad, sad = device
+                    assert (0<= pad <=30) and (sad==0 or 0x60<= sad <=0x7e)
+                    command += b" " + bytes(str(int(pad)), 'ascii') + b" " + bytes(str(int(sad)), 'ascii')
+                else:
+                    assert (0<= device <=30)
+                    command += b" " + bytes(str(int(device)), 'ascii')
+            await self.__write(command)
+            
 
     async def version(self):
         """
