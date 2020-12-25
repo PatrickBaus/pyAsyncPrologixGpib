@@ -27,6 +27,7 @@ sys.path.append("..") # Adds main directory to python modules path.
 
 # Devices
 from pyAsyncPrologixGpib.pyAsyncPrologixGpib import AsyncPrologixGpibEthernetController, EosMode
+from pyAsyncPrologixGpib.ip_connection import NotConnectedError, ConnectionLostError, NetworkError
 
 running_tasks = []
 loop = asyncio.get_event_loop()
@@ -59,8 +60,10 @@ async def main():
             version = await gpib_device.version()
             logging.getLogger(__name__).info('Controller version: %(version)s', {'version': version})
 
-        except (ConnectionError, ConnectionRefusedError):
+        except (ConnectionRefusedError, NetworkError):
             logging.getLogger(__name__).error('Could not connect to remote target. Connection refused. Is the device connected?')
+        except NotConnectedError:
+            logging.getLogger(__name__).error('Not connected. Did you call .connect()?')
         finally:
             await gpib_device.disconnect()    # We may call diconnect() on a non-connected gpib device
             logging.getLogger(__name__).debug('Shutting down the main loop')

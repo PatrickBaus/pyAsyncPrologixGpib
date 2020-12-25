@@ -19,12 +19,14 @@
 # ##### END GPL LICENSE BLOCK #####
 
 import asyncio
+import logging
 import sys
 
 sys.path.append("..") # Adds main directory to python modules path.
 
 # Devices
 from pyAsyncPrologixGpib.pyAsyncPrologixGpib import AsyncPrologixGpibEthernetController
+from pyAsyncPrologixGpib.ip_connection import NotConnectedError, ConnectionLostError, NetworkError
 
 # The primary address (e.g. 22) can be anything. There is no device connection required for this example
 gpib_device = AsyncPrologixGpibEthernetController('192.168.1.104', pad=22)
@@ -36,11 +38,15 @@ async def main():
         version = await gpib_device.version()
         print('Controller version: ', version)
     except (ConnectionError, ConnectionRefusedError):
-        print('Could not connect to remote target. Connection refused. Is the device connected?')
+    except (ConnectionRefusedError, NetworkError):
+        logging.getLogger(__name__).error('Could not connect to remote target. Connection refused. Is the device connected?')
+    except NotConnectedError:
+        logging.getLogger(__name__).error('Not connected. Did you call .connect()?')
     finally:
-        # Disconnect from the GPIB controller. We may safely call diconnect() on a non-connected gpib device, that
-        # means in case of a connection error
+        # Disconnect from the GPIB controller. We may safely call diconnect() on a non-connected gpib device, even
+        # in case of a connection error
         await gpib_device.disconnect()
 
+logging.basicConfig(level=logging.DEBUG)    # Enable logs from the ip connection. Set to logging.INFO for less verbose output
 asyncio.run(main())
 
