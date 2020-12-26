@@ -33,6 +33,7 @@ running_tasks = []
 loop = asyncio.get_event_loop()
 # The primary address (e.g. 22) can be anything. There is no device connection required for this example
 ip_address = '192.168.1.104'
+ip_address = "127.0.0.1"
 gpib_device = AsyncPrologixGpibEthernetController(ip_address, pad=27, timeout=1000, eos_mode=EosMode.APPEND_NONE)
 
 async def stop_loop():
@@ -55,8 +56,6 @@ async def main():
     try:
         try: 
             await gpib_device.connect()
-            timeout  = await gpib_device.get_eot()
-            logging.getLogger(__name__).info('GPIB timeout: %(timeout)d ms', {'timeout': timeout})
             version = await gpib_device.version()
             logging.getLogger(__name__).info('Controller version: %(version)s', {'version': version})
 
