@@ -95,6 +95,11 @@ class AsyncPrologixGpib():
         await self.__conn.disconnect()
 
     async def __ensure_state(self):
+        """
+        Push the current state of the gpib device to the remote state of the controller.
+        Note: Before calling this function, acquire the self.__conn.meta["lock"], to ensure, that only one gpib device
+        is modifying the remote state of the controller.
+        """
         jobs = []
         if self.__state['device_mode'] != self.__conn.meta.get('device_mode'):
             jobs.append(self.__set_device_mode(self.__state['device_mode']))
@@ -120,6 +125,8 @@ class AsyncPrologixGpib():
         """
         Issue a Prologix command and return the result. This function will strip the \r\n control sequence returned
         by the controller.
+        Note: Before calling this function, acquire the self.__conn.meta["lock"], to ensure, that only one read
+        request is performed.
         """
         await self.__write(command)
         return (await self.__conn.read(eol_character=b"\n"))[:-2]    # strip the EOT characters (\r\n)

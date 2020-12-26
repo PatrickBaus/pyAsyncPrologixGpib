@@ -11,7 +11,13 @@ Tested using Linux, should work for Mac OSX, Windows and any OS with Python supp
 
 ## Setup
 
-There are currently no packages available. To install the library clone the reposistory into your project folder.
+There are currently no packages available. To install the library clone the repository into your project folder and install the required packages
+
+```bash
+virtualenv env  # virtual environment, optional
+source env/bin/activate
+pip install -r requirements.txt
+```
 
 ## Usage
 
@@ -73,6 +79,8 @@ See [examples/](examples/) for more working examples.
 The Prologix GPIB adapter supports talking to multiple devices, but there is a are (theoretical) hardware limits. The Prologix adapters do not have line drivers, so only a limited number of devices can be driven using one controller.
 
 On the software side, there is full support for multiple devices and the driver will switch between different addresses transparently. The driver internally manages the connection and keeps track of the GPIB controller state and manages the state for each gpib object. It is important, that the driver is the only client editing the state of the GPIB controller. Otherwise, the driver state and the controller state may get out of sync.
+
+> :warning: **Concurrency with multiple devices**: Note, that when using a single adapter to control multiple devices, there is no concurrency on the GPIB bus. Whenever reading or writing to a remote device, the driver will lock the GPIB controller to ensure that reading from a controller is synchronous. This means, there is **no** speed increase, when making asynchronous reads from multiple devices on the bus. Using a GPIB Group Execute Trigger (GET) by invoking the trigger() function, concurrent measurements can be triggered though.
 
 Example:
 ```python
