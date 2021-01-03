@@ -4,14 +4,14 @@ Python3 AsyncIO Prologix GPIB Driver. This library requires Python [asyncio](htt
 ## Supported Hardware
 |Device|Supported|Tested|Comments|
 |--|--|--|--|
-|[GPIB-ETHERNET Controller 1.2](http://prologix.biz/gpib-ethernet-controller.html)|:heavy_check_mark:|  :heavy_check_mark:|  |
+|[GPIB-ETHERNET Controller 1.2](http://prologix.biz/gpib-ethernet-controller.html)|:heavy_check_mark:|:heavy_check_mark:|  |
 |[GPIB-USB Controller 6.0](http://prologix.biz/gpib-usb-controller.html)|:x:|:x:|Need hardware
 
 Tested using Linux, should work for Mac OSX, Windows and any OS with Python support.
 
 ## Setup
 
-There are currently no packages available. To install the library clone the repository into your project folder and install the required packages
+There are currently no packages available. To install the library, clone the repository into your project folder and install the required packages
 
 ```bash
 virtualenv env  # virtual environment, optional
