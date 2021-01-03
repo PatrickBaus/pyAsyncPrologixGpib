@@ -153,20 +153,22 @@ class AsyncPrologixGpib():
             await self.__ensure_state()
             await self.__write(data)
 
-    async def read(self, len=None, character=None):
+    async def read(self, len=None, character=None, force_poll=True):
         """
         Read data until an EOI (End of Identify) was received (default), or if the character parameter is set until the
         character is received. Using the len parameter it is possible to read only a certain number of bytes.
         The underlying network protocol is a stream protocol, which does not know about the EOI of the GPIB bus. By
         default a packet is terminated by a \n. If the device does not terminate its packets with either \r\n or \n,
-        consider using an EOT characer.
+        consider using an EOT characer, if there is no way of knowing the number of bytes returned.
+        When using the "read after write" feature, set force_poll to False, when querying.
         """
         async with self.__conn.meta["lock"]:
             await self.__ensure_state()
-            if character is None:
-                await self.__write(b"++read eoi")
-            else:
-                await self.__write("++read {value:d}".format(value=ord(character)).encode('ascii'))
+            if force_poll or not self.__state['read_after_write']:
+                if character is None:
+                    await self.__write(b"++read eoi")
+                else:
+                    await self.__write("++read {value:d}".format(value=ord(character)).encode('ascii'))
 
             return await self.__conn.read(length=len, eol_character=self.__state['eot_char'] if self.__state['send_eot'] else None)
 
@@ -556,7 +558,7 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
     async def ibloc(self):
         raise TypeError("Not supported in device mode")
 
-    async def read(self, len=None, character=None):
+    async def read(self, len=None, character=None, force_poll=True):
         raise TypeError("Not supported in device mode")
 
     async def timeout(self, value):
