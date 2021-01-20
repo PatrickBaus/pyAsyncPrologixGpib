@@ -56,7 +56,7 @@ class AsyncPrologixGpib():
     def _conn(self):
         return self.__conn
 
-    def __init__(self, conn, pad, device_mode, sad, timeout, send_eoi, eos_mode):
+    def __init__(self, conn, pad, device_mode, sad, timeout, send_eoi, eos_mode, wait_delay):
         self.__conn = conn
         self.__state = {
           'pad'             : pad,
@@ -69,6 +69,7 @@ class AsyncPrologixGpib():
           'read_after_write': False,
           'device_mode'     : device_mode,
         }
+        self.set_wait_delay(wait_delay)
 
     async def connect(self):
         """
@@ -344,8 +345,8 @@ class AsyncPrologixGpib():
         """
         Set the GPIB timeout in ms for a read. This is not the network timeout, which comes on top of that.
         """
-        assert (1 <= value <= 3000)
-        await self.__write("++read_tmo_ms {value:d}".format(value=value).encode('ascii'))
+        assert (1 <= value)   # Allow values greater than 3000 ms, because the wait() method can take arbitrary values
+        await self.__write("++read_tmo_ms {value:d}".format(value=min(value,3000)).encode('ascii')) # Cap value to 3000 max
         self.__state['timeout'] = value
         self.__conn.meta['timeout'] = value
 
@@ -457,7 +458,7 @@ class AsyncPrologixGpib():
         """
         while "waiting":
             spoll_task = asyncio.create_task(self.serial_poll(self.__state['pad'], self.__state['sad']))    # Need to create task
-            done, pending = await asyncio.wait([spoll_task, asyncio.sleep(0.2)], return_when=asyncio.FIRST_COMPLETED)
+            done, pending = await asyncio.wait([spoll_task, asyncio.sleep(self.__wait_delay/1000)], return_when=asyncio.FIRST_COMPLETED)
 
             if spoll_task in done:
                 spoll = spoll_task.result()
@@ -479,7 +480,7 @@ class AsyncPrologixGpib():
             return
 
         if mask & (1 << 14):   # TIMO
-            with async_timeout.timeout(self.__state['timeout']) as cm:
+            with async_timeout.timeout(self.__state['timeout']/1000) as cm:
                 try:
                     await self.__wait()
                 except asyncio.CancelledError:
@@ -544,9 +545,16 @@ class AsyncPrologixGpib():
         self.__state['device_mode'] = device_mode
         self.__conn.meta['device_mode'] = device_mode
 
+    def set_wait_delay(self, value):
+        """
+        Set the number of ms to wait between serial polling the status byte, when waiting. See wait(mask).
+        Minimum value: 100 ms, maximum value the timeout set for timeout the GPIB device.
+        """
+        assert(100 <= value <= self.__state['timeout'])
+        self.__wait_delay = min(max(value, 100), self.__state['timeout'])
 
 class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
-    def __init__(self, hostname, pad, port=1234, sad=0, timeout=3000, send_eoi=True, eos_mode=EosMode.APPEND_NONE, ethernet_timeout=1000):   # timeout is in ms
+    def __init__(self, hostname, pad, port=1234, sad=0, timeout=3000, send_eoi=True, eos_mode=EosMode.APPEND_NONE, ethernet_timeout=1000, wait_delay=250):   # timeout is in ms
         conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=(timeout+ethernet_timeout)/1000)   # timeout is in seconds
         super().__init__(
           conn=conn,
@@ -556,6 +564,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
           timeout=timeout,
           send_eoi=send_eoi,
           eos_mode=eos_mode,
+          wait_delay=wait_delay,
         )
 
     async def set_listen_only(self, enable):
@@ -572,7 +581,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
 
 
 class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
-    def __init__(self, hostname, pad, port=1234, sad=0, send_eoi=True, eos_mode=EosMode.APPEND_NONE, ethernet_timeout=1000):   # timeout is in ms
+    def __init__(self, hostname, pad, port=1234, sad=0, send_eoi=True, eos_mode=EosMode.APPEND_NONE, ethernet_timeout=1000, wait_delay=250):   # timeout is in ms
         conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=ethernet_timeout/1000)   # timeout is in seconds
         super().__init__(
           conn=conn,
@@ -581,6 +590,7 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
           device_mode=DeviceMode.DEVICE,
           send_eoi=send_eoi,
           eos_mode=eos_mode,
+          wait_delay=wait_delay,
         )
 
     async def set_read_after_write(self, enable):
