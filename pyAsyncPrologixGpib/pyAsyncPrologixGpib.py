@@ -438,15 +438,16 @@ class AsyncPrologixGpib():
         assert (0<= pad <=30) and (sad==0 or 0x60<= sad <=0x7e)
         command = b"++spoll"
         if pad != 0:
+            # if pad (and sad) are given, we do not need to enforce the current state
             command += b" " + bytes(str(int(pad)), 'ascii')
             if sad != 0:
                 command += b" " + bytes(str(int(sad)), 'ascii')
             async with self.__conn.meta["lock"]:
-                return await self.__query_command(command)
+                return int(await self.__query_command(command))
         else:
             async with self.__conn.meta["lock"]:
                 await self.__ensure_state()
-                return await self.__query_command(command)
+                return int(await self.__query_command(command))
 
 
     async def test_srq(self):
