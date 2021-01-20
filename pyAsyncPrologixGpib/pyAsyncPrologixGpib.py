@@ -18,6 +18,7 @@
 # ##### END GPL LICENSE BLOCK #####
 
 import asyncio
+import async_timeout
 from enum import Enum, unique
 from itertools import zip_longest
 import re   # needed to escape characters in the byte stream
@@ -449,6 +450,45 @@ class AsyncPrologixGpib():
                 await self.__ensure_state()
                 return int(await self.__query_command(command))
 
+    async def __wait(self):
+        """
+        Wait for an SRQ of the selected device. Wait at least 200 ms before querying again, but return early, if the
+        bit is set.
+        """
+        while "waiting":
+            spoll_task = asyncio.create_task(self.serial_poll(self.__state['pad'], self.__state['sad']))    # Need to create task
+            done, pending = await asyncio.wait([spoll_task, asyncio.sleep(0.2)], return_when=asyncio.FIRST_COMPLETED)
+
+            if spoll_task in done:
+                spoll = spoll_task.result()
+                if spoll & (1 << 6):    # SRQ bit set
+                    # Cancel the wait and return early
+                    for t in pending:
+                        t.cancel()
+                    return
+                else:
+                    await asyncio.wait(pending, return_when=asyncio.ALL_COMPLETED)    # Otherwise wait 100 ms
+            else:
+                await asyncio.wait(pending)
+                spoll = spoll_task.result()
+                if spoll & (1 << 6):    # SRQ bit set
+                    return    # when done
+
+    async def wait(self, mask):
+        if not mask & (1 << 11):    # RQS
+            return
+
+        if mask & (1 << 14):   # TIMO
+            with async_timeout.timeout(self.__state['timeout']) as cm:
+                try:
+                    await self.__wait()
+                except asyncio.CancelledError:
+                    if cm.expired:
+                        raise asyncio.TimeoutError() from None
+                    else:
+                        raise
+        else:
+            await self.__wait()
 
     async def test_srq(self):
         """
