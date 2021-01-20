@@ -19,7 +19,7 @@
 
 import asyncio
 import async_timeout
-from enum import Enum, unique
+from enum import Enum, Flag, unique
 from itertools import zip_longest
 import re   # needed to escape characters in the byte stream
 
@@ -36,6 +36,12 @@ class EosMode(Enum):
     APPEND_CR    = 1
     APPEND_LF    = 2
     APPEND_NONE  = 3
+
+@unique
+class RqsMask(Flag):
+    NONE = 0
+    RQS  = (1 << 11)
+    TIMO = (1 << 14)
 
 # The following characters need to be escaped according to:
 # http://prologix.biz/downloads/PrologixGpibEthernetManual.pdf
@@ -476,10 +482,11 @@ class AsyncPrologixGpib():
                     return    # when done
 
     async def wait(self, mask):
-        if not mask & (1 << 11):    # RQS
+        mask = RqsMask(mask)
+        if not bool(mask & RqsMask.RQS):
             return
 
-        if mask & (1 << 14):   # TIMO
+        if bool(mask & RqsMask.TIMO):
             with async_timeout.timeout(self.__state['timeout']/1000) as cm:
                 try:
                     await self.__wait()
