@@ -55,7 +55,7 @@ class AsyncPrologixGpib():
     def _conn(self):
         return self.__conn
 
-    def __init__(self, conn, pad, device_mode, sad=0, timeout=13, send_eoi=1, eos_mode=0):
+    def __init__(self, conn, pad, device_mode, sad, timeout, send_eoi, eos_mode):
         self.__conn = conn
         self.__state = {
           'pad'             : pad,
@@ -505,11 +505,12 @@ class AsyncPrologixGpib():
 
 
 class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
-    def __init__(self, hostname, pad, port=1234, sad=0, timeout=13, send_eoi=1, eos_mode=0, ethernet_timeout=1000):   # timeout is in ms
+    def __init__(self, hostname, pad, port=1234, sad=0, timeout=3000, send_eoi=True, eos_mode=EosMode.APPEND_NONE, ethernet_timeout=1000):   # timeout is in ms
         conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=(timeout+ethernet_timeout)/1000)   # timeout is in seconds
         super().__init__(
           conn=conn,
           pad=pad,
+          sad=sad,
           device_mode=DeviceMode.CONTROLLER,
           timeout=timeout,
           send_eoi=send_eoi,
@@ -530,11 +531,12 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
 
 
 class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
-    def __init__(self, hostname, pad, port=1234, sad=0, send_eoi=1, eos_mode=0, ethernet_timeout=1000):   # timeout is in ms
+    def __init__(self, hostname, pad, port=1234, sad=0, send_eoi=True, eos_mode=EosMode.APPEND_NONE, ethernet_timeout=1000):   # timeout is in ms
         conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=ethernet_timeout/1000)   # timeout is in seconds
         super().__init__(
           conn=conn,
           pad=pad,
+          sad=sad,
           device_mode=DeviceMode.DEVICE,
           send_eoi=send_eoi,
           eos_mode=eos_mode,
