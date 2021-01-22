@@ -459,27 +459,22 @@ class AsyncPrologixGpib():
 
     async def __wait(self):
         """
-        Wait for an SRQ of the selected device. Wait at least 200 ms before querying again, but return early, if the
+        Wait for an SRQ of the selected device. Wait at least self.__wait_delay before querying again, but return early, if the
         bit is set.
         """
         while "waiting":
-            spoll_task = asyncio.create_task(self.serial_poll(self.__state['pad'], self.__state['sad']))    # Need to create task
-            done, pending = await asyncio.wait([spoll_task, asyncio.sleep(self.__wait_delay/1000)], return_when=asyncio.FIRST_COMPLETED)
+            sleep_task = asyncio.create_task(asyncio.sleep(self.__wait_delay/1000))
 
-            if spoll_task in done:
-                spoll = spoll_task.result()
+            # Test if the SRQ line has been pulled low. Then test if this was done by the instrument managed by this class.
+            if await self.test_srq():
+                spoll = await self.serial_poll(self.__state['pad'], self.__state['sad'])
                 if spoll & (1 << 6):    # SRQ bit set
                     # Cancel the wait and return early
-                    for t in pending:
-                        t.cancel()
+                    sleep_task.cancel()
                     return
-                else:
-                    await asyncio.wait(pending, return_when=asyncio.ALL_COMPLETED)    # Otherwise wait 100 ms
-            else:
-                await asyncio.wait(pending)
-                spoll = spoll_task.result()
-                if spoll & (1 << 6):    # SRQ bit set
-                    return    # when done
+
+            # Now wait until self.__wait_delay is over. Then start a new request.
+            await sleep_task
 
     async def wait(self, mask):
         mask = RqsMask(mask)
