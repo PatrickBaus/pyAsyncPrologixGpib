@@ -1,4 +1,4 @@
-# pyAsyncPrologixGpib
+# prologix_gpib_async
 Python3 AsyncIO Prologix GPIB Driver. This library requires Python [asyncio](https://docs.python.org/3/library/asyncio.html). In contrast to a synchronous implementation, this library makes it possible to control multiple GPIB controllers at once and work with large setups.
 
 ## Supported Hardware
@@ -11,19 +11,19 @@ Tested using Linux, should work for Mac OSX, Windows and any OS with Python supp
 
 ## Setup
 
-There are currently no packages available. To install the library, clone the repository into your project folder and install the required packages
+To install the library, clone the repository into your project folder and run the install script.
 
 ```bash
 virtualenv env  # virtual environment, optional
 source env/bin/activate
-pip install -r requirements.txt
+pip python3 setup.py install
 ```
 
 ## Usage
 
 Initialize the GPIB adapter
 ```python
-from pyAsyncPrologixGpib.pyAsyncPrologixGpib import AsyncPrologixGpibEthernetController
+from prologix_gpib_async.prologix_gpib_async import AsyncPrologixGpibEthernetController
 # Create a controller and talk to device address 22
 gpib_device = AsyncPrologixGpibEthernetController('127.0.0.1', pad=22)
 
@@ -52,7 +52,7 @@ Example programm, that queries the version string as can be found at [examples/e
 import asyncio
 
 # Devices
-from pyAsyncPrologixGpib.pyAsyncPrologixGpib import AsyncPrologixGpibEthernetController
+from prologix_gpib_async.prologix_gpib_async import AsyncPrologixGpibEthernetController
 
 # The primary address (e.g. 22) can be anything. There is no device connection required for this example
 gpib_device = AsyncPrologixGpibEthernetController('127.0.0.1', pad=22)
@@ -87,7 +87,7 @@ Example:
 import asyncio
 
 # Devices
-from pyAsyncPrologixGpib.pyAsyncPrologixGpib import AsyncPrologixGpibEthernetController
+from prologix_gpib_async.prologix_gpib_async import AsyncPrologixGpibEthernetController
 
 gpib_device1 = AsyncPrologixGpibEthernetController('127.0.0.1', pad=22)
 gpib_device2 = AsyncPrologixGpibEthernetController('127.0.0.1', pad=10)
