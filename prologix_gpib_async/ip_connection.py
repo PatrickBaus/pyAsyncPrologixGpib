@@ -27,11 +27,7 @@ class NotConnectedError(ConnectionError):
     pass
 
 class ConnectionLostError(ConnectionError):
-    def __init__(self, message, host, port):
-        super().__init__(message)
-
-        self.__host = host
-        self.__port = port
+    pass
 
 class NetworkError(ConnectionError):
     pass
@@ -114,7 +110,7 @@ class AsyncIPConnection():
                     await self.__disconnect()
                 except Exception:
                     pass
-                raise ConnectionLostError("Prologix IP Connection error. Connection lost.", *self.__host) from None
+                raise ConnectionLostError("Prologix IP Connection error. Connection lost to host %s:%d." % self.__host) from None
         else:
             raise NotConnectedError('Prologix IP Connection not connected')
 
