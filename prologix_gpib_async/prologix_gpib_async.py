@@ -143,7 +143,7 @@ class AsyncPrologixGpib():
     @staticmethod
     def __escape_data(data):
         """
-        The prologix adapter uses ++ to signal commands. The \ŗ\n characters are used to separate messages. In order to
+        The prologix adapter uses ++ to signal commands. The \r\n characters are used to separate messages. In order to
         transmit these characters to the GPIB device, they need to be escaped using the ESC character (\x1B). Therefore
         \r, \n, \x1B (27, ESC) and "+" need to be escaped.
         """
