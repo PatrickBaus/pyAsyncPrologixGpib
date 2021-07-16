@@ -1,22 +1,8 @@
 # -*- coding: utf-8 -*-
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-# Copyright (C) 2021  Patrick Baus
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-# ##### END GPL LICENSE BLOCK #####
-
+"""
+This module implements the API used by the Prologix GPIB adapters in pure python using AsyncIO.
+The manual can be found here: http://prologix.biz/downloads/PrologixGpibEthernetManual.pdf
+"""
 import asyncio
 from enum import Enum, Flag, unique
 from itertools import zip_longest
@@ -26,11 +12,17 @@ from .ip_connection import AsyncSharedIPConnection
 
 @unique
 class DeviceMode(Enum):
+    """
+    The GPIB controller can act as either a GPIB device or as a GPIB bus controller
+    """
     DEVICE = 0
     CONTROLLER = 1
 
 @unique
 class EosMode(Enum):
+    """
+    The GPIB termination characters, select CR+LF, CR, LF or nothing at all.
+    """
     APPEND_CR_LF = 0
     APPEND_CR    = 1
     APPEND_LF    = 2
@@ -38,6 +30,10 @@ class EosMode(Enum):
 
 @unique
 class RqsMask(Flag):
+    """
+    The bitmask used, when serial polling a GPIB device to determine if the device requests service
+    (RQS) or has a timeout (TIMO).
+    """
     NONE = 0
     RQS  = (1 << 11)
     TIMO = (1 << 14)
@@ -56,12 +52,15 @@ translation_map = {
 # all characters first.
 escape_pattern = re.compile(b'|'.join(map(re.escape, translation_map.keys())))
 
-class AsyncPrologixGpib():
+class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
+    """
+    The base class used by both the Prologix GPIB controller and GPIB device.
+    """
     @property
     def _conn(self):
         return self.__conn
 
-    def __init__(self, conn, pad, device_mode, sad, timeout, send_eoi, eos_mode, wait_delay):
+    def __init__(self, conn, pad, device_mode, sad, timeout, send_eoi, eos_mode, wait_delay):   # pylint: disable=too-many-arguments
         self.__conn = conn
         self.__state = {
           'pad'             : pad,
@@ -82,7 +81,7 @@ class AsyncPrologixGpib():
         will not be saved to EEPROM to safe write cycles.
         """
         await self.__conn.connect()
-        lock = self.__conn.meta.setdefault('lock', asyncio.Lock())
+        lock = self.__conn.meta.setdefault('lock', asyncio.Lock())  # either create a new lock or get the old one
         async with lock:
             await asyncio.gather(
                 self.set_save_config(False),    # Disable saving the config to EEPROM by default to save EEPROM writes
@@ -344,12 +343,16 @@ class AsyncPrologixGpib():
                 await self.__ibloc()
 
     async def timeout(self, value):
+        """
+        Set the GPIB timeout in ms for a read. This is not the network timeout, which comes on top of that.
+        """
         async with self.__conn.meta['lock']:
             await self.__timeout(value)
 
     async def __timeout(self, value):
         """
-        Set the GPIB timeout in ms for a read. This is not the network timeout, which comes on top of that.
+        Set the GPIB timeout in ms for a read.
+        This functios needs a lock on self.__conn.meta['lock'].
         """
         assert value >= 1   # Allow values greater than 3000 ms, because the wait() method can take arbitrary values
         await self.__write("++read_tmo_ms {value:d}".format(value=min(value,3000)).encode('ascii')) # Cap value to 3000 max
@@ -357,6 +360,10 @@ class AsyncPrologixGpib():
         self.__conn.meta['timeout'] = value
 
     async def __ibloc(self):
+        """
+        Set the device to local mode, return control to the front panel.
+        This functios needs a lock on self.__conn.meta['lock'].
+        """
         await self.__write(b'++loc')
 
     async def ibloc(self):
@@ -458,8 +465,8 @@ class AsyncPrologixGpib():
 
     async def __wait(self):
         """
-        Wait for an SRQ of the selected device. Wait at least self.__wait_delay before querying again, but return early, if the
-        bit is set.
+        The Prologix controller does not support callback, so this functions polls the controller
+        until it finds the device has set the SRQ bit.
         """
         while "waiting":
             sleep_task = asyncio.create_task(asyncio.sleep(self.__wait_delay/1000))
@@ -476,6 +483,10 @@ class AsyncPrologixGpib():
             await sleep_task
 
     async def wait(self, mask):
+        """
+        Wait for an SRQ of the selected device. Wait at least self.__wait_delay before querying again, but return early, if the
+        bit is set.
+        """
         mask = RqsMask(mask)
         if not bool(mask & RqsMask.RQS):
             return
@@ -548,7 +559,10 @@ class AsyncPrologixGpib():
         self.__wait_delay = min(max(value, 100), self.__state['timeout'])
 
 class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
-    def __init__(self, hostname, pad, port=1234, sad=0, timeout=3000, send_eoi=True, eos_mode=EosMode.APPEND_NONE, ethernet_timeout=1000, wait_delay=250):   # timeout is in ms
+    """
+    Acts as the GPIB bus controller.
+    """
+    def __init__(self, hostname, pad, port=1234, sad=0, timeout=3000, send_eoi=True, eos_mode=EosMode.APPEND_NONE, ethernet_timeout=1000, wait_delay=250):   # timeout is in ms, pylint: disable=too-many-arguments
         conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=(timeout+ethernet_timeout)/1000)   # timeout is in seconds
         super().__init__(
           conn=conn,
@@ -575,7 +589,10 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
 
 
 class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
-    def __init__(self, hostname, pad, port=1234, sad=0, send_eoi=True, eos_mode=EosMode.APPEND_NONE, ethernet_timeout=1000, wait_delay=250):   # timeout is in ms
+    """
+    Acts as the a GPIB device on the bus.
+    """
+    def __init__(self, hostname, pad, port=1234, sad=0, send_eoi=True, eos_mode=EosMode.APPEND_NONE, ethernet_timeout=1000, wait_delay=250):   # timeout is in ms, pylint: disable=too-many-arguments
         conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=ethernet_timeout/1000)   # timeout is in seconds
         super().__init__(
           conn=conn,
