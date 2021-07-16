@@ -22,8 +22,6 @@ from enum import Enum, Flag, unique
 from itertools import zip_longest
 import re   # needed to escape characters in the byte stream
 
-import async_timeout
-
 from .ip_connection import AsyncSharedIPConnection
 
 @unique
@@ -483,13 +481,7 @@ class AsyncPrologixGpib():
             return
 
         if bool(mask & RqsMask.TIMO):
-            with async_timeout.timeout(self.__state['timeout']/1000) as context_manager:
-                try:
-                    await self.__wait()
-                except asyncio.CancelledError:
-                    if context_manager.expired:
-                        raise asyncio.TimeoutError() from None
-                    raise
+            await asyncio.wait_for(self.__wait(), timeout=self.__state['timeout']/1000)
         else:
             await self.__wait()
 

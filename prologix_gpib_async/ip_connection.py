@@ -20,8 +20,6 @@ import asyncio
 import errno    # The error numbers can be found in /usr/include/asm-generic/errno.h
 import logging
 
-import async_timeout
-
 
 class NotConnectedError(ConnectionError):
     pass
@@ -118,18 +116,14 @@ class AsyncIPConnection():
         if self.is_connected:
             eol_character = self.SEPARATOR if eol_character is None else eol_character
             try:
-                with async_timeout.timeout(self.__timeout) as context_manager:
-                    try:
-                        if length is None:
-                            data = await self.__reader.readuntil(eol_character)
-                        else:
-                            data = await self.__reader.readexactly(length)
-                        self.__logger.debug("Data read: %(data)s", {'data': data})
-                        return data
-                    except asyncio.CancelledError:
-                        if context_manager.expired:
-                            raise asyncio.TimeoutError() from None
-                        raise
+                if length is None:
+                    coro = self.__reader.readuntil(eol_character)
+                else:
+                    coro = self.__reader.readexactly(length)
+                data = await asyncio.wait_for(coro, timeout=self.__timeout)
+
+                self.__logger.debug("Data read: %(data)s", {'data': data})
+                return data
             except asyncio.TimeoutError:
                 self.logger.error('Timeout (>%d s) while reading data.', self.__timeout)
                 raise
@@ -153,24 +147,21 @@ class AsyncIPConnection():
         delay.
         """
         if not self.is_connected:
-            with async_timeout.timeout(self.__timeout) as context_manager:
-                try:
-                    self.__reader, self.__writer = await asyncio.open_connection(hostname, port)
-                except asyncio.CancelledError:
-                    if context_manager.expired:
-                        raise asyncio.TimeoutError() from None
-                    raise
-                except OSError as error:
-                    if error.errno == errno.ENETUNREACH:
-                        raise NetworkError(f"Prologix IP Connection error: Cannot connect to address {hostname}:{port}") from None
-                    if error.errno == errno.ECONNREFUSED:
-                        raise ConnectionRefusedError(f"Prologix IP Connection error: The host ({hostname}:{port}) refused to connect.") from None
-                    raise
-                except asyncio.TimeoutError:
-                    raise NetworkError('Prologix IP Connection error during connect: Timeout') from None
+            try:
+                self.__reader, self.__writer = await asyncio.wait_for(
+                    asyncio.open_connection(host=host, port=port),
+                    timeout=self.__timeout
+                )
+            except OSError as error:
+                if error.errno == errno.ENETUNREACH:
+                    raise NetworkError(f"Prologix IP Connection error: Cannot connect to address {hostname}:{port}") from None
+                if error.errno == errno.ECONNREFUSED:
+                    raise ConnectionRefusedError(f"Prologix IP Connection error: The host ({hostname}:{port}) refused to connect.") from None
+                raise
+            except asyncio.TimeoutError:
+                raise NetworkError('Prologix IP Connection error during connect: Timeout') from None
 
-                self.__host = (hostname, port)
-
+            self.__host = (hostname, port)
             self.logger.info('Prologix IP connection established to host %s:%d', hostname, port)
 
     async def __disconnect(self):
