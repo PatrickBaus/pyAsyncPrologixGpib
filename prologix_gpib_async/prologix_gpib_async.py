@@ -18,10 +18,11 @@
 # ##### END GPL LICENSE BLOCK #####
 
 import asyncio
-import async_timeout
 from enum import Enum, Flag, unique
 from itertools import zip_longest
 import re   # needed to escape characters in the byte stream
+
+import async_timeout
 
 from .ip_connection import AsyncSharedIPConnection
 
@@ -126,7 +127,7 @@ class AsyncPrologixGpib():
         if self.__state['timeout'] != self.__conn.meta.get('timeout'):
             jobs.append(self.__timeout(self.__state['timeout']))
 
-        if len(jobs):
+        if jobs:
             await asyncio.gather(*jobs)
 
     async def __query_command(self, command):
@@ -137,9 +138,10 @@ class AsyncPrologixGpib():
         request is performed.
         """
         await self.__write(command)
-        return (await self.__conn.read(eol_character=b"\n"))[:-2]    # strip the EOT characters (\r\n)
+        return (await self.__conn.read(eol_character=b"\n"))[:-2]    # strip the EOT characters ("\r\n")
 
-    def __escape_data(self, data):
+    @staticmethod
+    def __escape_data(data):
         """
         The prologix adapter uses ++ to signal commands. the \ŗ \n characters are used to separate messages. In order to
         transmit these characters to the GPIB device, they need to be escaped using the ESC character (\x1B). Therefore
@@ -161,7 +163,7 @@ class AsyncPrologixGpib():
             await self.__ensure_state()
             await self.__write(data)
 
-    async def read(self, len=None, character=None, force_poll=True):
+    async def read(self, len=None, character=None, force_poll=True):    # pylint: disable=redefined-builtin
         """
         Read data until an EOI (End of Identify) was received (default), or if the character parameter is set until the
         character is received. Using the len parameter it is possible to read only a certain number of bytes.
@@ -220,9 +222,9 @@ class AsyncPrologixGpib():
     async def __set_address(self, pad, sad=0):
         assert (0<= pad <=30) and (sad==0 or 0x60<= sad <=0x7e)
         if sad == 0:
-          address = "++addr {pad:d}".format(pad=pad).encode('ascii')
+            address = "++addr {pad:d}".format(pad=pad).encode('ascii')
         else:
-          address = "++addr {pad:d} {sad:d}".format(pad=pad, sad=sad).encode('ascii')
+            address = "++addr {pad:d} {sad:d}".format(pad=pad, sad=sad).encode('ascii')
 
         await self.__write(address)
         self.__state['pad'] = pad
@@ -351,7 +353,7 @@ class AsyncPrologixGpib():
         """
         Set the GPIB timeout in ms for a read. This is not the network timeout, which comes on top of that.
         """
-        assert (1 <= value)   # Allow values greater than 3000 ms, because the wait() method can take arbitrary values
+        assert value >= 1   # Allow values greater than 3000 ms, because the wait() method can take arbitrary values
         await self.__write("++read_tmo_ms {value:d}".format(value=min(value,3000)).encode('ascii')) # Cap value to 3000 max
         self.__state['timeout'] = value
         self.__conn.meta['timeout'] = value
@@ -381,7 +383,7 @@ class AsyncPrologixGpib():
         Returns the status byte, that will be sent to a controller if serial polled by the
         controller.
         """
-        assert (0 <= value <= 255)
+        assert 0 <= value <= 255
         async with self.__conn.meta["lock"]:
             await self.__ensure_state()
             await self.__write("++status {value:d}".format(value=value).encode('ascii'))
@@ -410,7 +412,7 @@ class AsyncPrologixGpib():
         Examples: devices=(22,10) will trigger pad 22 and 10
                   devices=((22,96),10) will trigger (pad 22, sad 96) and pad 10
         """
-        assert (len(devices) <= 15)
+        assert len(devices) <= 15
         if len(devices) == 0:
             async with self.__conn.meta["lock"]:
                 # No need to call __ensure_state(), as we will trigger the device by its address
@@ -426,10 +428,9 @@ class AsyncPrologixGpib():
                     assert (0<= pad <=30) and (sad==0 or 0x60<= sad <=0x7e)
                     command += b" " + bytes(str(int(pad)), 'ascii') + b" " + bytes(str(int(sad)), 'ascii')
                 else:
-                    assert (0<= device <=30)
+                    assert 0 <= device <= 30
                     command += b" " + bytes(str(int(device)), 'ascii')
             await self.__write(command)
-            
 
     async def version(self):
         """
@@ -482,14 +483,13 @@ class AsyncPrologixGpib():
             return
 
         if bool(mask & RqsMask.TIMO):
-            with async_timeout.timeout(self.__state['timeout']/1000) as cm:
+            with async_timeout.timeout(self.__state['timeout']/1000) as context_manager:
                 try:
                     await self.__wait()
                 except asyncio.CancelledError:
-                    if cm.expired:
+                    if context_manager.expired:
                         raise asyncio.TimeoutError() from None
-                    else:
-                        raise
+                    raise
         else:
             await self.__wait()
 
@@ -552,7 +552,7 @@ class AsyncPrologixGpib():
         Set the number of ms to wait between serial polling the status byte, when waiting. See wait(mask).
         Minimum value: 100 ms, maximum value the timeout set for timeout the GPIB device.
         """
-        assert(100 <= value <= self.__state['timeout'])
+        assert 100 <= value <= self.__state['timeout']
         self.__wait_delay = min(max(value, 100), self.__state['timeout'])
 
 class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
@@ -613,7 +613,7 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
     async def ibloc(self):
         raise TypeError("Not supported in device mode")
 
-    async def read(self, len=None, character=None, force_poll=True):
+    async def read(self, len=None, character=None, force_poll=True):    # pylint: disable=redefined-builtin
         raise TypeError("Not supported in device mode")
 
     async def timeout(self, value):
@@ -625,5 +625,5 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
     async def test_srq(self):
         raise TypeError("Not supported in device mode")
 
-    async def trigger(self):
+    async def trigger(self, devices=()):
         raise TypeError("Not supported in device mode")
