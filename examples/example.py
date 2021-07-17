@@ -36,7 +36,7 @@ async def main():
         # Connect to the controller. This call must be done in the loop.
         await gpib_device.connect()
         version = await gpib_device.version()
-        print("Controller version: ", version)
+        print("Controller version:", version)
     except (ConnectionError, ConnectionRefusedError):
     except (ConnectionRefusedError, NetworkError):
         logging.getLogger(__name__).error("Could not connect to remote target. Connection refused. Is the device connected?")
