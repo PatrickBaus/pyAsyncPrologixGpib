@@ -160,7 +160,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
             await self.__ensure_state()
             await self.__write(data)
 
-    async def read(self, len=None, character=None, force_poll=True):    # pylint: disable=redefined-builtin
+    async def read(self, length=None, character=None, force_poll=True):
         """
         Read data until an EOI (End of Identify) was received (default), or if the character parameter is set until the
         character is received. Using the len parameter it is possible to read only a certain number of bytes.
@@ -177,7 +177,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
                 else:
                     await self.__write("++read {value:d}".format(value=ord(character)).encode('ascii'))
 
-            return await self.__conn.read(length=len, eol_character=self.__state['eot_char'] if self.__state['send_eot'] else None)
+            return await self.__conn.read(length=length, eol_character=self.__state['eot_char'] if self.__state['send_eot'] else None)
 
     async def get_device_mode(self):
         """
@@ -623,7 +623,7 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
     async def ibloc(self):
         raise TypeError("Not supported in device mode")
 
-    async def read(self, len=None, character=None, force_poll=True):    # pylint: disable=redefined-builtin
+    async def read(self, length=None, character=None, force_poll=True):
         raise TypeError("Not supported in device mode")
 
     async def timeout(self, value):
