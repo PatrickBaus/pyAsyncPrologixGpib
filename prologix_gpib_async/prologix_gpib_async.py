@@ -465,7 +465,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
 
     async def __wait(self):
         """
-        The Prologix controller does not support callback, so this functions polls the controller
+        The Prologix controller does not support callbacks, so this functions polls the controller
         until it finds the device has set the SRQ bit.
         """
         while "waiting":
@@ -599,6 +599,7 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
           pad=pad,
           sad=sad,
           device_mode=DeviceMode.DEVICE,
+          timeout=None,
           send_eoi=send_eoi,
           eos_mode=eos_mode,
           wait_delay=wait_delay,
@@ -635,4 +636,10 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
         raise TypeError("Not supported in device mode")
 
     async def trigger(self, devices=()):
+        raise TypeError("Not supported in device mode")
+
+    async def wait(self, mask):
+        raise TypeError("Not supported in device mode")
+
+    def set_wait_delay(self, value):
         raise TypeError("Not supported in device mode")
