@@ -32,7 +32,7 @@ from pyAsyncPrologixGpib.ip_connection import NotConnectedError, ConnectionLostE
 running_tasks = []
 loop = asyncio.get_event_loop()
 # The primary address (e.g. 22) can be anything. There is no device connection required for this example
-ip_address = '192.168.1.104'
+ip_address = "192.168.1.104"
 ip_address = "127.0.0.1"
 gpib_device = AsyncPrologixGpibEthernetController(ip_address, pad=27, timeout=1000, eos_mode=EosMode.APPEND_NONE)
 
@@ -57,25 +57,25 @@ async def main():
         try: 
             await gpib_device.connect()
             version = await gpib_device.version()
-            logging.getLogger(__name__).info('Controller version: %(version)s', {'version': version})
+            logging.getLogger(__name__).info("Controller version: %(version)s", {'version': version})
 
         except (ConnectionRefusedError, NetworkError):
-            logging.getLogger(__name__).error('Could not connect to remote target. Connection refused. Is the device connected?')
+            logging.getLogger(__name__).error("Could not connect to remote target. Connection refused. Is the device connected?")
         except NotConnectedError:
-            logging.getLogger(__name__).error('Not connected. Did you call .connect()?')
+            logging.getLogger(__name__).error("Not connected. Did you call .connect()?")
         finally:
             await gpib_device.disconnect()    # We may call diconnect() on a non-connected gpib device
-            logging.getLogger(__name__).debug('Shutting down the main loop')
+            logging.getLogger(__name__).debug("Shutting down the main loop")
     except asyncio.CancelledError:
         # If the loop is canceled, someone else is shutting us down. That someone must then take care of closing the
         # loop.
         pass
     else:
         loop.stop()
-    logging.getLogger(__name__).debug('Stopped the main loop')
+    logging.getLogger(__name__).debug("Stopped the main loop")
 
 # Report all mistakes managing asynchronous resources.
-warnings.simplefilter('always', ResourceWarning)
+warnings.simplefilter("always", ResourceWarning)
 loop.set_debug(enabled=True)    # Raise all execptions and log all callbacks taking longer than 100 ms
 logging.basicConfig(level=logging.DEBUG)    # Enable logs from the ip connection. Set to logging.INFO for less verbose output
 

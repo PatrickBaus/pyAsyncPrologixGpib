@@ -29,7 +29,7 @@ from pyAsyncPrologixGpib.pyAsyncPrologixGpib import AsyncPrologixGpibEthernetCon
 from pyAsyncPrologixGpib.ip_connection import NotConnectedError, ConnectionLostError, NetworkError
 
 # The primary address (e.g. 22) can be anything. There is no device connection required for this example
-ip_address = '192.168.1.104'
+ip_address = "192.168.1.104"
 gpib_device1 = AsyncPrologixGpibEthernetController(ip_address, pad=22)
 
 gpib_device2 = AsyncPrologixGpibEthernetController(ip_address, pad=10)
@@ -41,15 +41,15 @@ async def main():
           gpib_device1.connect(),
           gpib_device2.connect(),
         )
-        await gpib_device1.write(b"*IDN?")    # Automatically changes address to device 22
+        await gpib_device1.write(b'*IDN?')    # Automatically changes address to device 22
         print(await gpib_device1.read())
-        await gpib_device2.write(b"*IDN?")    # Automatically changes address to device 10
+        await gpib_device2.write(b'*IDN?')    # Automatically changes address to device 10
         print(await gpib_device2.read())
     except (ConnectionRefusedError, NetworkError):
-        logging.getLogger(__name__).error('Could not connect to remote target. Connection refused. Is the device connected?')
+        logging.getLogger(__name__).error("Could not connect to remote target. Connection refused. Is the device connected?")
         raise
     except NotConnectedError:
-        logging.getLogger(__name__).error('Not connected. Did you call .connect()?')
+        logging.getLogger(__name__).error("Not connected. Did you call .connect()?")
     finally:
         # Disconnect from the GPIB controller. We may safely call diconnect() on a non-connected gpib device, even
         # in case of a connection error
