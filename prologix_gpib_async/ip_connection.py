@@ -39,8 +39,17 @@ class _AsyncIPConnectionPool():
         """
         Either returns a new connection or if the hostname/port combination is known, returns
         an existing connection.
-        For example localhost and 127.0.0.1 will not be shared, because localhost might map to
-        either ::1 or 127.0.0.1
+        For example localhost and 127.0.0.1 will not be shared, because localhost might either map
+        to ::1 or 127.0.0.1
+
+        Parameters
+        ----------
+        hostname: str
+            hostname of the connection
+        port: int
+            port of the connection
+        client: AsyncSharedIPConnection
+            the shared ip connection
         """
         try:
             if (hostname, port) not in cls._connections:
@@ -60,8 +69,17 @@ class _AsyncIPConnectionPool():
     @classmethod
     async def disconnect(cls, hostname, port, client):
         """
-        Disconnects the connection if this was the last client. Otherwise removes the client from
-        the list of users.
+        Removes the client from the list of connected clients. This will disconnect
+        the connection if it is the last client.
+
+        Parameters
+        ----------
+        hostname: str
+            hostname of the connection
+        port: int
+            port of the connection
+        client: AsyncSharedIPConnection
+            the shared ip connection
         """
         if (hostname, port) in cls._connections:
             await cls._connections[(hostname, port)].disconnect_client(client)
@@ -81,25 +99,40 @@ class AsyncIPConnection():
     @property
     def timeout(self):
         """
-        Returns the timeout for async operations in seconds.
+        Returns
+        -------
+        float
+            timeout for async operations in seconds
         """
         return self.__timeout
 
     @timeout.setter
     def timeout(self, value):
         """
-        Set the timeout of all operation in seconds.
+        Parameters
+        ----------
+        value: float
+            timeout of all operation in seconds
         """
-        self.__timeout = abs(int(value))
+        self.__timeout = abs(float(value))
 
     @property
     def is_connected(self):
         """
-        Returns True if the connection is current still active.
+        Returns
+        -------
+        bool
+            True if the connection is current still active.
         """
         return self.__writer is not None and not self.__writer.is_closing()
 
     def __init__(self, timeout=None):
+        """
+        Parameters
+        ----------
+        timeout: float, default=None
+            timeout of all operation in seconds. Use DEFAULT_WAIT_TIMEOUT if None is set
+        """
         self.__host, self.__writer, self.__reader = None, None, None
         self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout
 
@@ -108,8 +141,13 @@ class AsyncIPConnection():
     async def write(self, data):
         """
         Send data to the client and make sure the buffer is emptied.
+
+        Parameters
+        ----------
+        data: bytes
+            data to be sent to the host
         """
-        self.__logger.debug('Sending data: %(payload)s', {'payload': data})
+        self.__logger.debug('Sending data: %s', data)
         if self.is_connected:
             try:
                 self.__writer.write(data)
@@ -132,17 +170,29 @@ class AsyncIPConnection():
         """
         Read either a fixed number of bytes or until the eol_character has been found. If length is
         set, we will read a fixed number of bytes.
+
+        Parameters
+        ----------
+        length: int, default=None
+            number of bytes to be read if not None
+        eol_character: byte, default=None
+            eol character to terminate the read if length is None. If None, the default SEPARATOR is used.
+
+        Returns
+        ----------
+        bytes
+            data to be received from the host
         """
         if self.is_connected:
-            eol_character = self.SEPARATOR if eol_character is None else eol_character
             try:
                 if length is None:
+                    eol_character = self.SEPARATOR if eol_character is None else eol_character
                     coro = self.__reader.readuntil(eol_character)
                 else:
                     coro = self.__reader.readexactly(length)
                 data = await asyncio.wait_for(coro, timeout=self.__timeout)
 
-                self.__logger.debug("Data read: %(data)s", {'data': data})
+                self.__logger.debug("Data read: %s", data)
                 return data
             except asyncio.TimeoutError:
                 self.__logger.error('Timeout (>%d s) while reading data.', self.__timeout)
@@ -167,6 +217,13 @@ class AsyncIPConnection():
         """
         Connect to the host. If a conneciton is already established, connect() will return without
         delay.
+
+        Parameters
+        ----------
+        hostname: str
+            hostname to connect to
+        port: int
+            port to connect to
         """
         if not self.is_connected:
             try:
@@ -220,11 +277,20 @@ class _AsyncPooledIPConnection(AsyncIPConnection):
     @property
     def has_clients(self):
         """
-        Returns True, if the connections has clients
+        Returns
+        -------
+        bool
+            True, if the connections has clients
         """
         return bool(self.__clients)
 
     def __init__(self, timeout=None):
+        """
+        Parameters
+        ----------
+        timeout: float, default=None
+            timeout of all operation in seconds. Use DEFAULT_WAIT_TIMEOUT if None is set
+        """
         super().__init__(timeout)
         self.__clients = set()
         self.meta = {}    # Meta data used to store connection specific states
@@ -234,6 +300,15 @@ class _AsyncPooledIPConnection(AsyncIPConnection):
         """
         Connect to the host. This function can be called multiple times by the client. It
         will return immediately if already connected and if no one is holding the lock.
+
+        Parameters
+        ----------
+        hostname: str
+            hostname of the connection
+        port: int
+            port of the connection
+        client: AsyncSharedIPConnection
+            the shared ip connection
         """
         if not client in self.__clients:
             # First add ourselves to the list of clients, so the connection will not be released, while we wait for
@@ -258,6 +333,15 @@ class _AsyncPooledIPConnection(AsyncIPConnection):
         """
         Either removes the client from the user list or disconnect the connection if the client is
         the last user.
+
+        Parameters
+        ----------
+        hostname: str
+            hostname of the connection
+        port: int
+            port of the connection
+        client: AsyncSharedIPConnection
+            the shared ip connection
         """
         # Return immediately if this client is not registered
         if client in self.__clients:
@@ -280,7 +364,10 @@ class AsyncSharedIPConnection():
     @property
     def meta(self):
         """
-        Returns the connection meta data. This is the state of the underlying hardware.
+        Returns
+        -------
+        dict
+            the connection meta data. This is the state of the underlying hardware.
         """
         if self.__conn is None:
             raise NotConnectedError('Prologix IP Connection not connected')
@@ -310,8 +397,17 @@ class AsyncSharedIPConnection():
 
     async def write(self, data):
         """
-        Writes to the underlying conenction. Throws a NotConnectedError() if the connection is not
-        connected.
+        Writes to the underlying conenction.
+
+        Parameters
+        ----------
+        data: bytes
+            data to be sent to the host
+
+        Raises
+        ----------
+        NotConnectedError
+            if the connection is no longer connected
         """
         if self.__conn is None:
             raise NotConnectedError('Prologix IP Connection not connected')
@@ -321,6 +417,23 @@ class AsyncSharedIPConnection():
         """
         Reads from the underlying connection. Throws a NotConnectedError() if the connection is not
         connected.
+
+        Parameters
+        ----------
+        length: int, default=None
+            number of bytes to be read if not None
+        eol_character: byte, default=None
+            eol character to terminate the read if length is None. If None, the default SEPARATOR is used.
+
+        Returns
+        ----------
+        bytes
+            data to be received from the host
+
+        Raises
+        ----------
+        NotConnectedError
+            if the connection is no longer connected
         """
         if self.__conn is None:
             raise NotConnectedError('Prologix IP Connection not connected')

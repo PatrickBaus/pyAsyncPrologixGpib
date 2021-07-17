@@ -25,7 +25,7 @@ Initialize the GPIB adapter
 ```python
 from prologix_gpib_async.prologix_gpib_async import AsyncPrologixGpibEthernetController
 # Create a controller and talk to device address 22
-gpib_device = AsyncPrologixGpibEthernetController('127.0.0.1', pad=22)
+gpib_device = AsyncPrologixGpibEthernetController("127.0.0.1", pad=22)
 
 # Connect to the controller. This must be done inside the loop
 await gpib_device.connect()
@@ -62,7 +62,7 @@ async def main():
         # Connect to the controller. This call must be done in the loop.
         await gpib_device.connect()
         version = await gpib_device.version()
-        print("Controller version: ", version)
+        print("Controller version:", version)
     except (ConnectionError, ConnectionRefusedError):
         print("Could not connect to remote target. Is the device connected?")
     finally:
@@ -89,8 +89,8 @@ import asyncio
 # Devices
 from prologix_gpib_async.prologix_gpib_async import AsyncPrologixGpibEthernetController
 
-gpib_device1 = AsyncPrologixGpibEthernetController('127.0.0.1', pad=22)
-gpib_device2 = AsyncPrologixGpibEthernetController('127.0.0.1', pad=10)
+gpib_device1 = AsyncPrologixGpibEthernetController("127.0.0.1", pad=22)
+gpib_device2 = AsyncPrologixGpibEthernetController("127.0.0.1", pad=10)
 
 async def main():
     try: 
@@ -99,9 +99,9 @@ async def main():
           gpib_device1.connect(),
           gpib_device2.connect(),
         )
-        await gpib_device1.write(b"*IDN?")    # Automatically changes address to device 22
+        await gpib_device1.write(b'*IDN?')    # Automatically changes address to device 22
         print(await gpib_device1.read())
-        await gpib_device2.write(b"*IDN?")    # Automatically changes address to device 10
+        await gpib_device2.write(b'*IDN?')    # Automatically changes address to device 10
         print(await gpib_device2.read())
     except (ConnectionError, ConnectionRefusedError):
         print("Could not connect to remote target. Is the device connected?")
@@ -116,6 +116,9 @@ asyncio.run(main())
 ## Versioning
 
 I use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/PatrickBaus/pyAsyncPrologix/tags). 
+
+## Documentation
+I use the [Numpydoc](https://numpydoc.readthedocs.io/en/latest/format.html) style for documentaion.
 
 ## Authors
 
