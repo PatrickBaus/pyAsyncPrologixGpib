@@ -47,7 +47,7 @@ class _AsyncIPConnectionPool():
                 # Create a new connection
                 cls._connections[(hostname, port)] = _AsyncPooledIPConnection(timeout=timeout)
 
-            await cls._connections[(hostname, port)].connect(hostname, port, client)
+            await cls._connections[(hostname, port)].connect_client(hostname, port, client)
 
             return cls._connections[(hostname, port)]
         except:
@@ -64,7 +64,7 @@ class _AsyncIPConnectionPool():
         the list of users.
         """
         if (hostname, port) in cls._connections:
-            await cls._connections[(hostname, port)].disconnect(client)
+            await cls._connections[(hostname, port)].disconnect_client(client)
 
             # If there are no clients left, remove the connection from the pool
             if not cls._connections[(hostname, port)].has_clients:
@@ -120,8 +120,10 @@ class AsyncIPConnection():
                     # This will call drain() again, and likely fail, but disconnect() should be the only place
                     # to remove the reader and writer.
                     await self.disconnect()
-                except Exception:
-                    self.__logger.exception("Exception during write. The handler needs to be more precise")
+                except Exception:   # pylint: disable=broad-except
+                        # We could get back *anything*. So we catch everything and throw it away.
+                        # We are shutting down anyway.
+                    self.__logger.exception("Exception during write error.")
                 raise ConnectionLostError("Prologix IP Connection error. Connection lost to host %s:%d." % self.__host) from None
         else:
             raise NotConnectedError('Prologix IP Connection not connected')
@@ -153,8 +155,10 @@ class AsyncIPConnection():
                     self.__logger.error("Connection error. The host (%s:%d) did not reply.", *self.__host)
                     try:
                         await self.disconnect()
-                    except Exception:
-                        self.__logger.exception("Exception during read. The handler needs to be more precise")
+                    except Exception:   # pylint: disable=broad-except
+                        # We could get back *anything*. So we catch everything and throw it away.
+                        # We are shutting down anyway.
+                        self.__logger.exception("Exception during read error.")
                     raise ConnectionLostError("Prologix IP Connection error. The host %s:%d did not reply." % self.__host) from None
         else:
             raise NotConnectedError('Prologix IP Connection not connected')
@@ -226,7 +230,7 @@ class _AsyncPooledIPConnection(AsyncIPConnection):
         self.meta = {}    # Meta data used to store connection specific states
         self.__lock = asyncio.Lock()
 
-    async def connect(self, hostname, port, client):
+    async def connect_client(self, hostname, port, client):
         """
         Connect to the host. This function can be called multiple times by the client. It
         will return immediately if already connected and if no one is holding the lock.
@@ -244,13 +248,13 @@ class _AsyncPooledIPConnection(AsyncIPConnection):
         try:
             async with self.__lock:
                 await super().connect(hostname, port)
-        except:
+        except Exception:
             # If there is *any* error, remove ourselves from the list of connected clients
             self.__clients.remove(client)
             # then pass on the error
             raise
 
-    async def disconnect(self, client):
+    async def disconnect_client(self, client):
         """
         Either removes the client from the user list or disconnect the connection if the client is
         the last user.
