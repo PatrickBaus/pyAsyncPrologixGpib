@@ -100,13 +100,19 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         Connect to the ethernet controller and configure the device as a GPIB controller. By default the configuration
         will not be saved to EEPROM to safe write cycles.
         """
-        await self.__conn.connect()
-        lock = self.__conn.meta.setdefault('lock', asyncio.Lock())  # either create a new lock or get the old one
-        async with lock:
-            await asyncio.gather(
-                self.set_save_config(False),    # Disable saving the config to EEPROM by default to save EEPROM writes
-                self.__ensure_state(),
-            )
+        connected = False
+        try:
+            await self.__conn.connect()
+            lock = self.__conn.meta.setdefault('lock', asyncio.Lock())  # either create a new lock or get the old one
+            async with lock:
+                await asyncio.gather(
+                    self.set_save_config(False),    # Disable saving the config to EEPROM by default to save EEPROM writes
+                    self.__ensure_state(),
+                )
+            connected = True
+        finally:
+            if not connected:
+                await self.__conn.disconnect()
 
     async def close(self):
         """
@@ -680,8 +686,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         bool
             True if the service request line is asserted
         """
-        async with self.__conn.meta['lock']:
-            return bool(int(await self.__query_command(b'++srq')))
+        return bool(int(await self.__query_command(b'++srq')))
 
     async def reset(self):
         """
@@ -701,8 +706,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
             save the config to the EEPROM on changes if True
         """
         enable = bool(int(enable))
-        async with self.__conn.meta['lock']:
-            await self.__write(f"++savecfg {enable:d}".encode('ascii'))
+        await self.__write(f"++savecfg {enable:d}".encode('ascii'))
 
     async def get_save_config(self):
         """
@@ -714,8 +718,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         bool
             True if the config is automatically saved to the EEPROM
         """
-        async with self.__conn.meta['lock']:
-            return bool(int(await self.__query_command(b'++savecfg')))
+        return bool(int(await self.__query_command(b'++savecfg')))
 
     async def set_listen_only(self, enable):
         """
@@ -727,8 +730,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         enable: bool
             put the controller in listen-only mode if True
         """
-        async with self._conn.meta['lock']:
-            await self.__write(f"++lon {enable:d}".encode('ascii'))
+        await self.__write(f"++lon {enable:d}".encode('ascii'))
 
     async def get_listen_only(self):
         """
@@ -737,8 +739,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         bool
             True if the controller is in listen-only mode.
         """
-        async with self.__conn.meta['lock']:
-            return bool(int(await self.__query_command(b'++lon')))
+        return bool(int(await self.__query_command(b'++lon')))
 
     async def __set_device_mode(self, device_mode):
         """
