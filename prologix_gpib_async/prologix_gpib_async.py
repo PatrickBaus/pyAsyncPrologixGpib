@@ -100,7 +100,6 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         Connect to the ethernet controller and configure the device as a GPIB controller. By default the configuration
         will not be saved to EEPROM to safe write cycles.
         """
-        connected = False
         try:
             await self.__conn.connect()
             lock = self.__conn.meta.setdefault('lock', asyncio.Lock())  # either create a new lock or get the old one
@@ -109,10 +108,8 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
                     self.set_save_config(False),    # Disable saving the config to EEPROM by default to save EEPROM writes
                     self.__ensure_state(),
                 )
-            connected = True
-        finally:
-            if not connected:
-                await self.__conn.disconnect()
+        except BaseException:   # pylint: disable=broad-except
+            await self.__conn.disconnect()
 
     async def close(self):
         """
