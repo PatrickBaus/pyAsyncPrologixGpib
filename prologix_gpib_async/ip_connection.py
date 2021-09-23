@@ -137,6 +137,7 @@ class AsyncIPConnection():
         self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout
 
         self.__logger = logging.getLogger(__name__)
+        self.__lock = None
 
     async def write(self, data):
         """
@@ -183,35 +184,39 @@ class AsyncIPConnection():
         bytes
             data to be received from the host
         """
-        if self.is_connected:
-            try:
-                if length is None:
-                    eol_character = self.SEPARATOR if eol_character is None else eol_character
-                    coro = self.__reader.readuntil(eol_character)
-                else:
-                    coro = self.__reader.readexactly(length)
-                data = await asyncio.wait_for(coro, timeout=self.__timeout)
-
-                self.__logger.debug("Data read: %s", data)
-                return data
-            except asyncio.TimeoutError:
-                self.__logger.error('Timeout (>%d s) while reading data.', self.__timeout)
-                raise
-            except asyncio.IncompleteReadError as exc:
-                if len(exc.partial) > 0:    # pylint: disable=no-else-return
-                    self.__logger.warning("Incomplete read request from host (%s:%d). Check your data.", *self.__host)
-                    return data
-                else:
-                    self.__logger.error("Connection error. The host (%s:%d) did not reply.", *self.__host)
-                    try:
-                        await self.disconnect()
-                    except Exception:   # pylint: disable=broad-except
-                        # We could get back *anything*. So we catch everything and throw it away.
-                        # We are shutting down anyway.
-                        self.__logger.exception("Exception during read error.")
-                    raise ConnectionLostError("Prologix IP Connection error. The host %s:%d did not reply." % self.__host) from None
-        else:
+        if not self.is_connected:
             raise NotConnectedError('Prologix IP Connection not connected')
+
+        async with self.__lock:
+            if self.is_connected:   # We need to check again, because the connection might have closed by now
+                try:
+                    if length is None:
+                        eol_character = self.SEPARATOR if eol_character is None else eol_character
+                        coro = self.__reader.readuntil(eol_character)
+                    else:
+                        coro = self.__reader.readexactly(length)
+                    data = await asyncio.wait_for(coro, timeout=self.__timeout)
+
+                    self.__logger.debug("Data read: %s", data)
+                    return data
+                except asyncio.TimeoutError:
+                    self.__logger.error('Timeout (>%d s) while reading data.', self.__timeout)
+                    raise
+                except asyncio.IncompleteReadError as exc:
+                    if len(exc.partial) > 0:    # pylint: disable=no-else-return
+                        self.__logger.warning("Incomplete read request from host (%s:%d). Check your data.", *self.__host)
+                        return data
+                    else:
+                        self.__logger.error("Connection error. The host (%s:%d) did not reply.", *self.__host)
+                        try:
+                            await self.disconnect()
+                        except Exception:   # pylint: disable=broad-except
+                            # We could get back *anything*. So we catch everything and throw it away.
+                            # We are shutting down anyway.
+                            self.__logger.exception("Exception during read error.")
+                        raise ConnectionLostError(f"Prologix IP Connection error. The host '%s:%d' did not reply" % *self.__host) from None
+            else:
+                raise NotConnectedError('Prologix IP Connection not connected')
 
     async def connect(self, hostname, port):
         """
@@ -235,12 +240,13 @@ class AsyncIPConnection():
                 if error.errno == errno.ENETUNREACH:
                     raise NetworkError(f"Prologix IP Connection error: Cannot connect to address {hostname}:{port}") from None
                 if error.errno == errno.ECONNREFUSED:
-                    raise ConnectionRefusedError(f"Prologix IP Connection error: The host ({hostname}:{port}) refused to connect.") from None
+                    raise ConnectionRefusedError(f"Prologix IP Connection error: The host ({hostname}:{port}) refused to connect") from None
                 raise
             except asyncio.TimeoutError:
                 raise NetworkError('Prologix IP Connection error during connect: Timeout') from None
 
             self.__host = (hostname, port)
+            self.__lock = asyncio.Lock()
             self.__logger.info('Prologix IP connection established to host %s:%d', hostname, port)
 
     async def disconnect(self):
@@ -253,6 +259,7 @@ class AsyncIPConnection():
             finally:
                 # We guarantee, that the connection is removed
                 self.__host, self.__writer, self.__reader = None, None, None
+                self.__lock = None
                 self.__logger.info('Prologix IP connection closed')
 
     async def __flush(self):
@@ -362,6 +369,16 @@ class AsyncSharedIPConnection():
     a AsyncIPConnection for connecting to a device.
     """
     @property
+    def hostname(self):
+        """
+        Returns
+        -------
+        str
+            hostname of the connection
+        """
+        return self.__hostname
+
+    @property
     def meta(self):
         """
         Returns
@@ -372,6 +389,16 @@ class AsyncSharedIPConnection():
         if self.__conn is None:
             raise NotConnectedError('Prologix IP Connection not connected')
         return self.__conn.meta
+
+    @property
+    def port(self):
+        """
+        Returns
+        -------
+        int
+            port of the connection
+        """
+        return self.__port
 
     def __init__(self, hostname, port=1234, timeout=None):
         self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout

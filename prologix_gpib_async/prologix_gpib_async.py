@@ -60,6 +60,14 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
     def _conn(self):
         return self.__conn
 
+    @property
+    def pad(self):
+        return self.__state['pad']
+
+    @property
+    def sad(self):
+        return self.__state['sad']
+
     def __init__(self, conn, pad, device_mode, sad, timeout, send_eoi, eos_mode, wait_delay):   # pylint: disable=too-many-arguments
         """
         Parameters
@@ -110,6 +118,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
                 )
         except BaseException:   # pylint: disable=broad-except
             await self.__conn.disconnect()
+            raise
 
     async def close(self):
         """
@@ -215,14 +224,17 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         The underlying network protocol is a stream protocol, which does not know about the EOI of the GPIB bus. By
         default a packet is terminated by a \n. If the device does not terminate its packets with either \r\n or \n,
         consider using an EOT characer, if there is no way of knowing the number of bytes returned.
-        When using the "read after write" feature, set force_poll to False, when querying.
+        When using the "read after write" feature, force_poll can be set to False, when reding after sending a
+        command.
 
         Parameters
         ----------
         length: int, default=None
-            number of bytes to read.
-        character: byte
+            number of bytes to read
+        character: byte, default=None
             an eol characer
+        force_poll: bool, default=True
+            if True, always request the GPIB device to TALK before reading
 
         Returns
         -------
@@ -775,6 +787,14 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
     """
     Acts as the GPIB bus controller.
     """
+    @property
+    def hostname(self):
+        return self._conn.hostname
+
+    @property
+    def port(self):
+        return self._conn.port
+
     def __init__(self, hostname, pad, port=1234, sad=0, timeout=3000, send_eoi=True, eos_mode=EosMode.APPEND_NONE, ethernet_timeout=1000, wait_delay=250):   # timeout is in ms, pylint: disable=too-many-arguments
         conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=(timeout+ethernet_timeout)/1000)   # timeout is in seconds
         super().__init__(
@@ -787,6 +807,9 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
           eos_mode=eos_mode,
           wait_delay=wait_delay,
         )
+
+    def __str__(self):
+        return f"Prologix GPIB Controller for device ({self.pad},{self.sad}) at '{self.hostname}:{self.port}'"
 
     async def set_listen_only(self, enable):
         raise TypeError("Not supported in controller mode")
@@ -805,6 +828,14 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
     """
     Acts as the a GPIB device on the bus.
     """
+    @property
+    def hostname(self):
+        return self._conn.hostname
+
+    @property
+    def port(self):
+        return self._conn.port
+
     def __init__(self, hostname, pad, port=1234, sad=0, send_eoi=True, eos_mode=EosMode.APPEND_NONE, ethernet_timeout=1000, wait_delay=250):   # timeout is in ms, pylint: disable=too-many-arguments
         conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=ethernet_timeout/1000)   # timeout is in seconds
         super().__init__(
@@ -817,6 +848,9 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
           eos_mode=eos_mode,
           wait_delay=wait_delay,
         )
+
+    def __str__(self):
+        return f"Prologix GPIB device ({self.pad},{self.sad}) at '{self.hostname}:{self.port}'"
 
     async def set_read_after_write(self, enable):
         raise TypeError("Not supported in device mode")

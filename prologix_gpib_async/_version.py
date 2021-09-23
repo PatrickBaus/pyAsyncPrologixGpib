@@ -1,2 +1,5 @@
-# pylint: disable=missing-module-docstring
-__version__ = "1.0.3"
+# -*- coding: utf-8 -*-
+"""
+Version information.
+"""
+__version__ = "1.0.4"
