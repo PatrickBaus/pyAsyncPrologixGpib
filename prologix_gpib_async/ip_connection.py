@@ -160,8 +160,8 @@ class AsyncIPConnection():
                     # to remove the reader and writer.
                     await self.disconnect()
                 except Exception:   # pylint: disable=broad-except
-                        # We could get back *anything*. So we catch everything and throw it away.
-                        # We are shutting down anyway.
+                    # We could get back *anything*. So we catch everything and throw it away.
+                    # We are shutting down anyway.
                     self.__logger.exception("Exception during write error.")
                 raise ConnectionLostError("Prologix IP Connection error. Connection lost to host %s:%d." % self.__host) from None
         else:
@@ -214,7 +214,7 @@ class AsyncIPConnection():
                             # We could get back *anything*. So we catch everything and throw it away.
                             # We are shutting down anyway.
                             self.__logger.exception("Exception during read error.")
-                        raise ConnectionLostError(f"Prologix IP Connection error. The host '%s:%d' did not reply" % *self.__host) from None
+                        raise ConnectionLostError("Prologix IP Connection error. The host '%s:%d' did not reply" % self.__host) from None
             else:
                 raise NotConnectedError('Prologix IP Connection not connected')
 
@@ -258,7 +258,7 @@ class AsyncIPConnection():
                 await self.__flush()
             finally:
                 # We guarantee, that the connection is removed
-                self.__host, self.__writer, self.__reader = None, None, None
+                self.__writer, self.__reader = None, None
                 self.__lock = None
                 self.__logger.info('Prologix IP connection closed')
 
