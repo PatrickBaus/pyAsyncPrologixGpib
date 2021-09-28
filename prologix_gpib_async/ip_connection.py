@@ -154,7 +154,7 @@ class AsyncIPConnection():
                 self.__writer.write(data)
                 await self.__writer.drain()
             except ConnectionResetError:
-                self.__logger.error("Connection lost while sending data to host (%s:%d).", *self.__host)
+                self.__logger.error("Connection lost while sending data to host '%s:%d'.", *self.__host)
                 try:
                     # This will call drain() again, and likely fail, but disconnect() should be the only place
                     # to remove the reader and writer.
@@ -163,7 +163,7 @@ class AsyncIPConnection():
                     # We could get back *anything*. So we catch everything and throw it away.
                     # We are shutting down anyway.
                     self.__logger.exception("Exception during write error.")
-                raise ConnectionLostError("Prologix IP Connection error. Connection lost to host %s:%d." % self.__host) from None
+                raise ConnectionLostError("Prologix IP Connection error. Connection lost to host '%s:%d'." % self.__host) from None
         else:
             raise NotConnectedError('Prologix IP Connection not connected')
 
@@ -238,16 +238,16 @@ class AsyncIPConnection():
                 )
             except OSError as error:
                 if error.errno == errno.ENETUNREACH:
-                    raise NetworkError(f"Prologix IP Connection error: Cannot connect to address {hostname}:{port}") from None
+                    raise NetworkError(f"Prologix IP Connection error: Cannot connect to address '{hostname}:{port}'") from None
                 if error.errno == errno.ECONNREFUSED:
-                    raise ConnectionRefusedError(f"Prologix IP Connection error: The host ({hostname}:{port}) refused to connect") from None
+                    raise ConnectionRefusedError(f"Prologix IP Connection error: The host '{hostname}:{port}' refused to connect.") from None
                 raise
             except asyncio.TimeoutError:
-                raise NetworkError('Prologix IP Connection error during connect: Timeout') from None
+                raise NetworkError("Prologix IP Connection error during connect: Timeout") from None
 
             self.__host = (hostname, port)
             self.__lock = asyncio.Lock()
-            self.__logger.info('Prologix IP connection established to host %s:%d', hostname, port)
+            self.__logger.info("Prologix IP connection established to host '%s:%d'", hostname, port)
 
     async def disconnect(self):
         """
