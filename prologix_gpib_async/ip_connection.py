@@ -231,6 +231,7 @@ class AsyncIPConnection():
             port to connect to
         """
         if not self.is_connected:
+            self.__host = hostname, port
             try:
                 self.__reader, self.__writer = await asyncio.wait_for(
                     asyncio.open_connection(host=hostname, port=port),
