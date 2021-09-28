@@ -245,9 +245,8 @@ class AsyncIPConnection():
             except asyncio.TimeoutError:
                 raise NetworkError("Prologix IP Connection error during connect: Timeout") from None
 
-            self.__host = (hostname, port)
             self.__lock = asyncio.Lock()
-            self.__logger.info("Prologix IP connection established to host '%s:%d'", hostname, port)
+            self.__logger.info("Prologix IP connection (%s:%d) connected", *self.__host)
 
     async def disconnect(self):
         """
