@@ -163,9 +163,9 @@ class AsyncIPConnection():
                     # We could get back *anything*. So we catch everything and throw it away.
                     # We are shutting down anyway.
                     self.__logger.exception("Exception during write error.")
-                raise ConnectionLostError("Prologix IP Connection error. Connection lost to host '%s:%d'." % self.__host) from None
+                raise ConnectionLostError("Prologix IP connection error. Connection lost to host '%s:%d'." % self.__host) from None
         else:
-            raise NotConnectedError('Prologix IP Connection not connected')
+            raise NotConnectedError('Prologix IP connection not connected')
 
     async def read(self, length=None, eol_character=None):
         """
@@ -185,7 +185,7 @@ class AsyncIPConnection():
             data to be received from the host
         """
         if not self.is_connected:
-            raise NotConnectedError('Prologix IP Connection not connected')
+            raise NotConnectedError('Prologix IP connection not connected')
 
         async with self.__lock:
             if self.is_connected:   # We need to check again, because the connection might have closed by now
@@ -214,9 +214,9 @@ class AsyncIPConnection():
                             # We could get back *anything*. So we catch everything and throw it away.
                             # We are shutting down anyway.
                             self.__logger.exception("Exception during read error.")
-                        raise ConnectionLostError("Prologix IP Connection error. The host '%s:%d' did not reply" % self.__host) from None
+                        raise ConnectionLostError("Prologix IP connection error. The host '%s:%d' did not reply" % self.__host) from None
             else:
-                raise NotConnectedError('Prologix IP Connection not connected')
+                raise NotConnectedError('Prologix IP connection not connected')
 
     async def connect(self, hostname, port):
         """
@@ -239,12 +239,12 @@ class AsyncIPConnection():
                 )
             except OSError as error:
                 if error.errno == errno.ENETUNREACH:
-                    raise NetworkError(f"Prologix IP Connection error: Cannot connect to address '{hostname}:{port}'") from None
+                    raise NetworkError(f"Prologix IP connection error: Cannot connect to address '{hostname}:{port}'") from None
                 if error.errno == errno.ECONNREFUSED:
-                    raise ConnectionRefusedError(f"Prologix IP Connection error: The host '{hostname}:{port}' refused to connect.") from None
+                    raise ConnectionRefusedError(f"Prologix IP connection error: The host '{hostname}:{port}' refused to connect.") from None
                 raise
             except asyncio.TimeoutError:
-                raise NetworkError("Prologix IP Connection error during connect: Timeout") from None
+                raise NetworkError("Prologix IP connection error during connect: Timeout") from None
 
             self.__lock = asyncio.Lock()
             self.__logger.info("Prologix IP connection (%s:%d) connected", *self.__host)
@@ -387,7 +387,7 @@ class AsyncSharedIPConnection():
             the connection meta data. This is the state of the underlying hardware.
         """
         if self.__conn is None:
-            raise NotConnectedError('Prologix IP Connection not connected')
+            raise NotConnectedError('Prologix IP connection not connected')
         return self.__conn.meta
 
     @property
@@ -437,7 +437,7 @@ class AsyncSharedIPConnection():
             if the connection is no longer connected
         """
         if self.__conn is None:
-            raise NotConnectedError('Prologix IP Connection not connected')
+            raise NotConnectedError('Prologix IP connection not connected')
         await self.__conn.write(data)
 
     async def read(self, length=None, eol_character=None):
@@ -463,5 +463,5 @@ class AsyncSharedIPConnection():
             if the connection is no longer connected
         """
         if self.__conn is None:
-            raise NotConnectedError('Prologix IP Connection not connected')
+            raise NotConnectedError('Prologix IP connection not connected')
         return await self.__conn.read(length, eol_character)
