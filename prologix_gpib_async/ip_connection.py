@@ -137,6 +137,7 @@ class AsyncIPConnection():
         self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout
 
         self.__logger = logging.getLogger(__name__)
+        self.__logger.setLevel(logging.WARNING)     # Only log really important messages
         self.__lock = None
 
     async def write(self, data):
