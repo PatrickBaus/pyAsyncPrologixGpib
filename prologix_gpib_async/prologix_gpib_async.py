@@ -812,7 +812,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
         )
 
     def __str__(self):
-        return f"Prologix GPIB Controller for device ({self.pad},{self.sad}) at '{self.hostname}:{self.port}'"
+        return f"Prologix GPIB Controller of device ({self.pad},{self.sad}) connected at '{self.hostname}:{self.port}'"
 
     async def set_listen_only(self, enable):
         raise TypeError("Not supported in controller mode")
