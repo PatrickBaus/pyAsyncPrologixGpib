@@ -103,6 +103,9 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         }
         self.set_wait_delay(wait_delay)
 
+    def __str__(self):
+        return f"Prologix GPIB at {str(self.__conn)}"
+
     async def connect(self):
         """
         Connect to the ethernet controller and configure the device as a GPIB controller. By default the configuration

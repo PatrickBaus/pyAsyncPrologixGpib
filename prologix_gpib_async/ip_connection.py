@@ -407,6 +407,9 @@ class AsyncSharedIPConnection():
         self.__port = port
         self.__conn = None
 
+    def __str__(self):
+        return f"Shared IP connection to {self.hostname}:{self.port}"
+
     async def connect(self):
         """
         Get a connection from the connection pool.
