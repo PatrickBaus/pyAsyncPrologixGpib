@@ -22,7 +22,7 @@ import asyncio
 from contextlib import AsyncExitStack
 
 # Devices
-from pyAsyncPrologixGpib.pyAsyncPrologixGpib import AsyncPrologixGpibEthernetController
+from pyAsyncPrologixGpib import AsyncPrologixGpibEthernetController
 
 ip_address = "localhost"
 

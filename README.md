@@ -25,7 +25,7 @@ also handle cleanup. By the way: Context managers are great!
 
 Initialize the GPIB adapter
 ```python
-from prologix_gpib_async.prologix_gpib_async import AsyncPrologixGpibEthernetController
+from prologix_gpib_async import AsyncPrologixGpibEthernetController
 # Create a controller and talk to device address 22
 async with AsyncPrologixGpibEthernetController("127.0.0.1", pad=22) as gpib_device:
     # Add your code here
@@ -46,7 +46,7 @@ Example programm, that queries the version string as can be found at [examples/e
 import asyncio
 
 # Devices
-from prologix_gpib_async.prologix_gpib_async import AsyncPrologixGpibEthernetController
+from prologix_gpib_async import AsyncPrologixGpibEthernetController
 
 async def main():
     try: 
@@ -74,7 +74,7 @@ import asyncio
 from contextlib import AsyncExitStack
 
 # Devices
-from prologix_gpib_async.prologix_gpib_async import AsyncPrologixGpibEthernetController
+from prologix_gpib_async import AsyncPrologixGpibEthernetController
 
 ip_address = "127.0.0.1"
 
