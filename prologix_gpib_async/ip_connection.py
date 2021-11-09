@@ -149,24 +149,24 @@ class AsyncIPConnection():
         data: bytes
             data to be sent to the host
         """
-        self.__logger.debug('Sending data: %s', data)
-        if self.is_connected:
-            try:
-                self.__writer.write(data)
-                await self.__writer.drain()
-            except ConnectionResetError:
-                self.__logger.error("Connection lost while sending data to host '%s:%d'.", *self.__host)
-                try:
-                    # This will call drain() again, and likely fail, but disconnect() should be the only place
-                    # to remove the reader and writer.
-                    await self.disconnect()
-                except Exception:   # pylint: disable=broad-except
-                    # We could get back *anything*. So we catch everything and throw it away.
-                    # We are shutting down anyway.
-                    self.__logger.exception("Exception during write error.")
-                raise ConnectionLostError("Prologix IP connection error. Connection lost to host '%s:%d'." % self.__host) from None
-        else:
+        if not self.is_connected:
             raise NotConnectedError('Prologix IP connection not connected')
+
+        self.__logger.debug('Sending data: %s', data)
+        try:
+            self.__writer.write(data)
+            await self.__writer.drain()
+        except ConnectionResetError:
+            self.__logger.error("Connection lost while sending data to host '%s:%d'.", *self.__host)
+            try:
+                # This will call drain() again, and likely fail, but disconnect() should be the only place
+                # to remove the reader and writer.
+                await self.disconnect()
+            except Exception:   # pylint: disable=broad-except
+                # We could get back *anything*. So we catch everything and throw it away.
+                # We are shutting down anyway.
+                self.__logger.exception("Exception during write error.")
+            raise ConnectionLostError("Prologix IP connection error. Connection lost to host '%s:%d'." % self.__host) from None
 
     async def read(self, length=None, eol_character=None):
         """
