@@ -7,7 +7,9 @@ is useful for embedded devices, that can only manage a limited number of connect
 import asyncio
 import errno    # The error numbers can be found in /usr/include/asm-generic/errno.h
 import logging
-from typing import Any, Optional
+from types import TracebackType
+from typing import Any, Optional, Type
+from typing_extensions import Self
 
 
 class NotConnectedError(ConnectionError):
@@ -140,19 +142,31 @@ class AsyncIPConnection:
         """
         return self.__writer is not None and not self.__writer.is_closing()
 
-    def __init__(self, timeout: Optional[float] = None) -> None:
+    def __init__(self, hostname: str, port: int = 1234, timeout: Optional[float] = None) -> None:
         """
         Parameters
         ----------
         timeout: float, default=None
             timeout of all operation in seconds. Use DEFAULT_WAIT_TIMEOUT if None is set
         """
-        self.__host, self.__writer, self.__reader = None, None, None
+        self.__host = host, port
+        self.__writer, self.__reader = None, None, None
         self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout
 
         self.__logger = logging.getLogger(__name__)
         self.__logger.setLevel(logging.WARNING)     # Only log really important messages
         self.__lock = None
+
+    async def __aenter__(self) -> Self:
+        await self.connect()
+        return self
+
+    async def __aexit__(
+            self, exc_type: Optional[Type[BaseException]],
+            exc: Optional[BaseException],
+            traceback: Optional[TracebackType]
+    ) -> None:
+        await self.disconnect()
 
     async def write(self, data: bytes) -> None:
         """
@@ -240,7 +254,7 @@ class AsyncIPConnection:
             else:
                 raise NotConnectedError('Prologix IP connection not connected')
 
-    async def connect(self, hostname: str, port: int) -> None:
+    async def connect(self, hostname: Optional[str] = None, port: Optional[int] = None) -> None:
         """
         Connect to the host. If a connection is already established, connect() will return without
         delay.
@@ -253,7 +267,7 @@ class AsyncIPConnection:
             port to connect to
         """
         if not self.is_connected:
-            self.__host = hostname, port
+            self.__host = self.__host[0] if hostname is None else hostname, self.__host[1] if port is None else port
             try:
                 self.__reader, self.__writer = await asyncio.wait_for(
                     asyncio.open_connection(host=hostname, port=port),
@@ -387,8 +401,8 @@ class _AsyncPooledIPConnection(AsyncIPConnection):
 
 class AsyncSharedIPConnection:
     """
-    A connection from the _AsyncIPConnectionPool(). Use either a AsyncSharedIPConnection or
-    a AsyncIPConnection for connecting to a device.
+    A connection from the _AsyncIPConnectionPool(). Use either an AsyncSharedIPConnection or
+    an AsyncIPConnection for connecting to a device.
     """
     @property
     def hostname(self) -> str:
@@ -427,6 +441,17 @@ class AsyncSharedIPConnection:
         self.__hostname = hostname
         self.__port = port
         self.__conn = None
+
+    async def __aenter__(self) -> Self:
+        await self.connect()
+        return self
+
+    async def __aexit__(
+            self, exc_type: Optional[Type[BaseException]],
+            exc: Optional[BaseException],
+            traceback: Optional[TracebackType]
+    ) -> None:
+        await self.disconnect()
 
     def __str__(self) -> str:
         return f"Shared IP connection to {self.hostname}:{self.port}"
