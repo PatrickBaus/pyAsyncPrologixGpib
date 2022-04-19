@@ -1,6 +1,8 @@
 # prologix_gpib_async
 Python3 AsyncIO Prologix GPIB Driver. This library requires Python [asyncio](https://docs.python.org/3/library/asyncio.html). In contrast to a synchronous implementation, this library makes it possible to control multiple GPIB controllers at once and work with large setups.
 
+The library is fully type-hinted.
+
 ## Supported Hardware
 |Device|Supported|Tested|Comments|
 |--|--|--|--|
@@ -11,7 +13,7 @@ Tested using Linux, should work for Mac OSX, Windows and any OS with Python supp
 
 ## Setup
 
-To install the library the library in a virtual environment (always use venvs with any project):
+To install the library in a virtual environment (always use venvs with every project):
 
 ```bash
 virtualenv env  # virtual environment, optional
@@ -41,7 +43,7 @@ Reading data from address 22
 data = await gpib_device.read()
 ```
 
-Example programm, that queries the version string as can be found at [examples/example.py](examples/example.py)
+Example program, that queries the version string as can be found at [examples/example.py](examples/example.py)
 ```python
 import asyncio
 
@@ -62,7 +64,7 @@ asyncio.run(main())
 See [examples/](examples/) for more working examples.
 
 ## Support for Multiple Devices
-The Prologix GPIB adapter supports talking to multiple devices, but there is a are (theoretical) hardware limits. The Prologix adapters do not have line drivers, so only a limited number of devices can be driven using one controller.
+The Prologix GPIB adapter supports talking to multiple devices, but there are (theoretical) hardware limits. The Prologix adapters do not have line drivers, so only a limited number of devices can be driven using one controller.
 
 On the software side, there is full support for multiple devices and the driver will switch between different addresses transparently. The driver internally manages the connection and keeps track of the GPIB controller state and manages the state for each gpib object. It is important, that the driver is the only client editing the state of the GPIB controller. Otherwise, the driver state and the controller state may get out of sync.
 
@@ -82,7 +84,7 @@ async def main():
     try:
         async with AsyncExitStack() as stack:
             gpib_device1, gpib_device2 = await asyncio.gather(
-                stack.enter_async_context(AsyncPrologixGpibEthernetController(ip_address, pad=22))
+                stack.enter_async_context(AsyncPrologixGpibEthernetController(ip_address, pad=22)),
                 stack.enter_async_context(AsyncPrologixGpibEthernetController(ip_address, pad=10))
             )
             await gpib_device1.write(b'*IDN?')    # Automatically changes address to device 22
@@ -100,7 +102,7 @@ asyncio.run(main())
 I use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/PatrickBaus/pyAsyncPrologix/tags). 
 
 ## Documentation
-I use the [Numpydoc](https://numpydoc.readthedocs.io/en/latest/format.html) style for documentaion.
+I use the [Numpydoc](https://numpydoc.readthedocs.io/en/latest/format.html) style for documentation.
 
 ## Authors
 
@@ -110,4 +112,3 @@ I use the [Numpydoc](https://numpydoc.readthedocs.io/en/latest/format.html) styl
 
 
 This project is licensed under the GPL v3 license - see the [LICENSE](LICENSE) file for details
-

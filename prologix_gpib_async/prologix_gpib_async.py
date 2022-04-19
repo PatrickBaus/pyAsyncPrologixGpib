@@ -832,35 +832,17 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         self.__wait_delay = min(max(value, 100), self.__state['timeout'])
 
 
-class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
-    """
-    Acts as the GPIB bus controller.
-    """
-    @property
-    def hostname(self) -> str:
-        return self._conn.hostname
-
-    @property
-    def port(self) -> int:
-        return self._conn.port
-
+class AsyncPrologixGpibController(AsyncPrologixGpib):
     def __init__(
             self,
-            hostname: str,
+            conn: AsyncSharedIPConnection,
             pad: int,
-            port: int = 1234,
             sad: int = 0,
             timeout: int = 3000,    # in ms
             send_eoi: bool = True,
             eos_mode: EosMode = EosMode.APPEND_NONE,
-            ethernet_timeout: int = 1000,   # in ms
             wait_delay: int = 250  # in ms
     ) -> None:  # pylint: disable=too-many-arguments
-        conn = AsyncSharedIPConnection(
-            hostname=hostname,
-            port=port,
-            timeout=(timeout+ethernet_timeout)/1000  # in seconds
-        )
         super().__init__(
           conn=conn,
           pad=pad,
@@ -873,7 +855,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
         )
 
     def __str__(self) -> str:
-        return f"Prologix GPIB Controller of device ({self.pad},{self.sad}) connected at '{self.hostname}:{self.port}'"
+        return f"Prologix GPIB Controller of device ({self.pad},{self.sad}) at {self._conn}"
 
     async def set_listen_only(self, enable: bool) -> None:
         raise TypeError("Not supported in controller mode")
@@ -888,47 +870,32 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
         raise TypeError("Not supported in controller mode")
 
 
-class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
+class AsyncPrologixGpibDevice(AsyncPrologixGpib):
     """
     Acts as a GPIB device on the bus.
     """
-    @property
-    def hostname(self) -> str:
-        return self._conn.hostname
-
-    @property
-    def port(self) -> int:
-        return self._conn.port
-
     def __init__(
             self,
-            hostname: str,
+            conn: AsyncSharedIPConnection,
             pad: int,
-            port: int = 1234,
             sad: int = 0,
             send_eoi: bool = True,
             eos_mode: EosMode = EosMode.APPEND_NONE,
-            ethernet_timeout: int = 1000,    # in ms
             wait_delay: int = 250   # in ms
     ) -> None:   # pylint: disable=too-many-arguments
-        conn = AsyncSharedIPConnection(
-            hostname=hostname,
-            port=port,
-            timeout=ethernet_timeout/1000   # in seconds
-        )
         super().__init__(
           conn=conn,
           pad=pad,
           sad=sad,
           device_mode=DeviceMode.DEVICE,
-          timeout=None,
+          timeout=3000,  # in ms. This is the read timeout. A device does not read, so we leave it at the default
           send_eoi=send_eoi,
           eos_mode=eos_mode,
           wait_delay=wait_delay,
         )
 
     def __str__(self):
-        return f"Prologix GPIB device ({self.pad},{self.sad}) at '{self.hostname}:{self.port}'"
+        return f"Prologix GPIB device ({self.pad},{self.sad}) at {self._conn}"
 
     async def set_read_after_write(self, enable: bool) -> None:
         raise TypeError("Not supported in device mode")
@@ -979,3 +946,81 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
 
     def set_wait_delay(self, value: int) -> None:
         raise TypeError("Not supported in device mode")
+
+
+class AsyncPrologixGpibEthernetController(AsyncPrologixGpibController):
+    """
+    Acts as the GPIB bus controller.
+    """
+    @property
+    def hostname(self) -> str:
+        return self._conn.hostname
+
+    @property
+    def port(self) -> int:
+        return self._conn.port
+
+    def __init__(
+            self,
+            hostname: str,
+            pad: int,
+            port: int = 1234,
+            sad: int = 0,
+            timeout: int = 3000,    # in ms
+            send_eoi: bool = True,
+            eos_mode: EosMode = EosMode.APPEND_NONE,
+            ethernet_timeout: int = 1000,   # in ms
+            wait_delay: int = 250  # in ms
+    ) -> None:  # pylint: disable=too-many-arguments
+        conn = AsyncSharedIPConnection(
+            hostname=hostname,
+            port=port,
+            timeout=(timeout+ethernet_timeout)/1000  # in seconds
+        )
+        super().__init__(
+          conn=conn,
+          pad=pad,
+          sad=sad,
+          timeout=timeout,
+          send_eoi=send_eoi,
+          eos_mode=eos_mode,
+          wait_delay=wait_delay,
+        )
+
+
+class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpibDevice):
+    """
+    Acts as a GPIB device on the bus.
+    """
+    @property
+    def hostname(self) -> str:
+        return self._conn.hostname
+
+    @property
+    def port(self) -> int:
+        return self._conn.port
+
+    def __init__(
+            self,
+            hostname: str,
+            pad: int,
+            port: int = 1234,
+            sad: int = 0,
+            send_eoi: bool = True,
+            eos_mode: EosMode = EosMode.APPEND_NONE,
+            ethernet_timeout: int = 1000,    # in ms
+            wait_delay: int = 250   # in ms
+    ) -> None:   # pylint: disable=too-many-arguments
+        conn = AsyncSharedIPConnection(
+            hostname=hostname,
+            port=port,
+            timeout=ethernet_timeout/1000   # in seconds
+        )
+        super().__init__(
+          conn=conn,
+          pad=pad,
+          sad=sad,
+          send_eoi=send_eoi,
+          eos_mode=eos_mode,
+          wait_delay=wait_delay,
+        )
