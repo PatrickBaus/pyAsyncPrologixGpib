@@ -142,15 +142,15 @@ class AsyncIPConnection:
         """
         return self.__writer is not None and not self.__writer.is_closing()
 
-    def __init__(self, hostname: str, port: int = 1234, timeout: Optional[float] = None) -> None:
+    def __init__(self, hostname: Optional[str] = None, port: int = 1234, timeout: Optional[float] = None) -> None:
         """
         Parameters
         ----------
         timeout: float, default=None
             timeout of all operation in seconds. Use DEFAULT_WAIT_TIMEOUT if None is set
         """
-        self.__host = host, port
-        self.__writer, self.__reader = None, None, None
+        self.__host = hostname, port
+        self.__writer, self.__reader = None, None
         self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout
 
         self.__logger = logging.getLogger(__name__)
@@ -338,7 +338,7 @@ class _AsyncPooledIPConnection(AsyncIPConnection):
         timeout: float, default=None
             timeout of all operation in seconds. Use DEFAULT_WAIT_TIMEOUT if None is set
         """
-        super().__init__(timeout)
+        super().__init__(timeout=timeout)
         self.__clients = set()
         self.meta = {}    # Metadata used to store connection specific states
         self.__lock = asyncio.Lock()
