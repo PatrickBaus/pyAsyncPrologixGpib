@@ -4,11 +4,15 @@ This module implements the API used by the Prologix GPIB adapters in pure python
 The manual can be found here: http://prologix.biz/downloads/PrologixGpibEthernetManual.pdf
 """
 import asyncio
+from types import TracebackType
+from typing import Optional, Type, Union
+from typing_extensions import Self
 from enum import Enum, Flag, unique
 from itertools import zip_longest
 import re   # needed to escape characters in the byte stream
 
 from .ip_connection import AsyncSharedIPConnection
+
 
 @unique
 class DeviceMode(Enum):
@@ -18,15 +22,17 @@ class DeviceMode(Enum):
     DEVICE = 0
     CONTROLLER = 1
 
+
 @unique
 class EosMode(Enum):
     """
     The GPIB termination characters, select CR+LF, CR, LF or nothing at all.
     """
     APPEND_CR_LF = 0
-    APPEND_CR    = 1
-    APPEND_LF    = 2
-    APPEND_NONE  = 3
+    APPEND_CR = 1
+    APPEND_LF = 2
+    APPEND_NONE = 3
+
 
 @unique
 class RqsMask(Flag):
@@ -35,45 +41,57 @@ class RqsMask(Flag):
     (RQS) or has a timeout (TIMO).
     """
     NONE = 0
-    RQS  = (1 << 11)
+    RQS = (1 << 11)
     TIMO = (1 << 14)
+
 
 # The following characters need to be escaped according to:
 # http://prologix.biz/downloads/PrologixGpibEthernetManual.pdf
 translation_map = {
-    b'\r'  : b'\x1B\r',
-    b'\n'  : b'\x1B\n',
-    b'+'   : b'\x1B+',
+    b'\r': b'\x1B\r',
+    b'\n': b'\x1B\n',
+    b'+': b'\x1B+',
     b'\x1B': b'\x1B\x1B',
 }
 
-# Generate a regex pattern which maches either of the characters (|).
-# Characters like "\n" need to be escaped when used in a regex, so we run re.ecape on
+# Generate a regex pattern which matches either of the characters (|).
+# Characters like "\n" need to be escaped when used in a regex, so we run re.escape on
 # all characters first.
 escape_pattern = re.compile(b'|'.join(map(re.escape, translation_map.keys())))
 
-class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
+
+class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
     """
     The base class used by both the Prologix GPIB controller and GPIB device.
     """
     @property
-    def _conn(self):
+    def _conn(self) -> AsyncSharedIPConnection:
         return self.__conn
 
     @property
-    def pad(self):
+    def pad(self) -> int:
         return self.__state['pad']
 
     @property
-    def sad(self):
+    def sad(self) -> int:
         return self.__state['sad']
 
-    def __init__(self, conn, pad, device_mode, sad, timeout, send_eoi, eos_mode, wait_delay):   # pylint: disable=too-many-arguments
+    def __init__(
+            self,
+            conn: AsyncSharedIPConnection,
+            pad: int,
+            device_mode: DeviceMode,
+            sad: int,
+            timeout: int,
+            send_eoi: bool,
+            eos_mode: EosMode,
+            wait_delay: int
+    ) -> None:   # pylint: disable=too-many-arguments
         """
         Parameters
         ----------
         conn: AsyncSharedIPConnection
-            a pooled ip conenction
+            a pooled ip connection
         pad: int
             primary address
         device_mode: DeviceMode
@@ -91,31 +109,35 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         """
         self.__conn = conn
         self.__state = {
-          'pad'             : pad,
-          'sad'             : sad,
-          'send_eoi'        : bool(int(send_eoi)),
-          'send_eot'        : False,
-          'eot_char'        : b'\n',
-          'eos_mode'        : EosMode(eos_mode),
-          'timeout'         : timeout,
+          'pad': pad,
+          'sad': sad,
+          'send_eoi': bool(int(send_eoi)),
+          'send_eot': False,
+          'eot_char': "\n",
+          'eos_mode': EosMode(eos_mode),
+          'timeout': timeout,
           'read_after_write': False,
-          'device_mode'     : device_mode,
+          'device_mode': device_mode,
         }
         self.set_wait_delay(wait_delay)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Prologix GPIB at {str(self.__conn)}"
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> Self:
         await self.connect()
         return self
 
-    async def __aexit__(self, exc_type, exc, traceback):
+    async def __aexit__(
+            self, exc_type: Optional[Type[BaseException]],
+            exc: Optional[BaseException],
+            traceback: Optional[TracebackType]
+    ) -> None:
         await self.disconnect()
 
-    async def connect(self):
+    async def connect(self) -> None:
         """
-        Connect to the ethernet controller and configure the device as a GPIB controller. By default the configuration
+        Connect to the ethernet controller and configure the device as a GPIB controller. By default, the configuration
         will not be saved to EEPROM to safe write cycles.
         """
         try:
@@ -123,26 +145,26 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
             lock = self.__conn.meta.setdefault('lock', asyncio.Lock())  # either create a new lock or get the old one
             async with lock:
                 await asyncio.gather(
-                    self.set_save_config(False),    # Disable saving the config to EEPROM by default to save EEPROM writes
+                    self.set_save_config(False),  # Disable saving the config to EEPROM by default to save EEPROM writes
                     self.__ensure_state(),
                 )
         except BaseException:   # pylint: disable=broad-except
             await self.__conn.disconnect()
             raise
 
-    async def close(self):
+    async def close(self) -> None:
         """
         This is an alias for disconnect().
         """
         await self.disconnect()
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """
         Close the ip connection and flush its buffers.
         """
         await self.__conn.disconnect()
 
-    async def __ensure_state(self):
+    async def __ensure_state(self) -> None:
         """
         Push the current state of the gpib device to the remote state of the controller.
         Note: Before calling this function, acquire the self.__conn.meta['lock'], to ensure, that only one gpib device
@@ -169,7 +191,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         if jobs:
             await asyncio.gather(*jobs)
 
-    async def __query_command(self, command):
+    async def __query_command(self, command: bytes) -> bytes:
         """
         Issue a Prologix command and return the result. This function will strip the \r\n control sequence returned
         by the controller.
@@ -190,7 +212,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         return (await self.__conn.read(eol_character=b'\n'))[:-2]    # strip the EOT characters ("\r\n")
 
     @staticmethod
-    def __escape_data(data):
+    def __escape_data(data: bytes) -> bytes:
         """
         The prologix adapter uses ++ to signal commands. The \r\n characters are used to separate messages. In order to
         transmit these characters to the GPIB device, they need to be escaped using the ESC character (\x1B). Therefore
@@ -209,10 +231,10 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         # Use a regex to match them, then replace them using a translation map
         return escape_pattern.sub(lambda match: translation_map[match.group(0)], data)
 
-    async def __write(self, data):
+    async def __write(self, data: bytes) -> None:
         await self.__conn.write(data + b'\n')   # Append Prologix termination character
 
-    async def write(self, data):
+    async def write(self, data: bytes) -> None:
         """
         Send a byte string to the GPIB device. The byte string will automatically be escaped, so it is not possible to
         send commands to the GPIB controller.
@@ -227,13 +249,18 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
             await self.__ensure_state()
             await self.__write(data)
 
-    async def read(self, length=None, character=None, force_poll=True):
+    async def read(
+            self,
+            length: Optional[int] = None,
+            character: Optional[bytes] = None,
+            force_poll: bool = True
+    ) -> bytes:
         """
         Read data until an EOI (End of Identify) was received (default), or if the character parameter is set until the
         character is received. Using the len parameter it is possible to read only a certain number of bytes.
         The underlying network protocol is a stream protocol, which does not know about the EOI of the GPIB bus. By
-        default a packet is terminated by a \n. If the device does not terminate its packets with either \r\n or \n,
-        consider using an EOT characer, if there is no way of knowing the number of bytes returned.
+        default, a packet is terminated by a \n. If the device does not terminate its packets with either \r\n or \n,
+        consider using an EOT character, if there is no way of knowing the number of bytes returned.
         When using the "read after write" feature, force_poll can be set to False, when reding after sending a
         command.
 
@@ -241,8 +268,8 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         ----------
         length: int, default=None
             number of bytes to read
-        character: byte, default=None
-            an eol characer
+        character: bytes, default=None
+            an eol character
         force_poll: bool, default=True
             if True, always request the GPIB device to TALK before reading
 
@@ -259,9 +286,12 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
                 else:
                     await self.__write(f"++read {ord(character):d}".encode('ascii'))
 
-            return await self.__conn.read(length=length, eol_character=self.__state['eot_char'] if self.__state['send_eot'] else None)
+            return await self.__conn.read(
+                length=length,
+                eol_character=self.__state['eot_char'] if self.__state['send_eot'] else None
+            )
 
-    async def get_device_mode(self):
+    async def get_device_mode(self) -> DeviceMode:
         """
         Returns
         -------
@@ -271,7 +301,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         async with self.__conn.meta['lock']:
             return DeviceMode(int(await self.__query_command(b'++mode')))
 
-    async def set_read_after_write(self, enable):
+    async def set_read_after_write(self, enable: bool) -> None:
         """
         If enabled automatically triggers the instrument to TALK after each command. If set, the instrument is also
         immediately asked to TALK (enable==True) or LISTEN (enable==False).
@@ -284,16 +314,16 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         async with self.__conn.meta['lock']:
             await self.__set_read_after_write(enable)
 
-    async def __set_read_after_write(self, enable):
+    async def __set_read_after_write(self, enable: bool) -> None:
         """
-        This functios needs a lock on self.__conn.meta['lock'].
+        This functions needs a lock on self.__conn.meta['lock'].
         """
         enable = bool(int(enable))
         await self.__write(f"++auto {enable:d}".encode('ascii'))
         self.__state['read_after_write'] = enable
         self.__conn.meta['read_after_write'] = enable
 
-    async def get_read_after_write(self):
+    async def get_read_after_write(self) -> bool:
         """
         Returns
         -------
@@ -303,7 +333,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         async with self.__conn.meta['lock']:
             return bool(int(await self.__query_command(b'++auto')))
 
-    async def set_address(self, pad, sad=0):
+    async def set_address(self, pad: int, sad: int = 0) -> None:
         """
         Change the current address of the GPIB controller. If set to device mode, this is the address the controller
         is listening to. If set to controller mode, it is the address of the device being to talked to.
@@ -313,14 +343,14 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         pad: int
             primary address in the range [0, 30]
         sad: int, default=0
-            secondary adddress in the range [96, 126]
+            secondary address in the range [96, 126]
         """
         async with self.__conn.meta['lock']:
             await self.__set_address(pad, sad)
 
-    async def __set_address(self, pad, sad=0):
+    async def __set_address(self, pad: int, sad: int = 0) -> None:
         """
-        This functios needs a lock on self.__conn.meta['lock'].
+        This function needs a lock on self.__conn.meta['lock'].
         """
         assert (0 <= pad <= 30) and (sad == 0 or (0x60 <= sad <= 0x7E))
 
@@ -335,20 +365,21 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         self.__conn.meta['pad'] = pad
         self.__conn.meta['sad'] = sad
 
-    async def get_address(self):
+    async def get_address(self) -> dict[str, int]:
         """
         Returns
         -------
         dict
-            The keys are 'pad' and 'sad' and the their values are the primary and secondary address
+            The keys are 'pad' and 'sad' and their values are the primary and secondary address
         """
         indices = ["pad", "sad"]
         async with self.__conn.meta['lock']:
             result = await self.__query_command(b'++addr')
 
-        # The result might by either "pad" or "pad sad"
+        # The result might be either "pad" or "pad sad"
         # The secondary address is offset by 0x60 (96).
-        # See here for the reason: http://www.ni.com/tutorial/2801/en/#:~:text=The%20secondary%20address%20is%20actually,the%20last%20bit%20is%20not
+        # See here for the reason:
+        # http://www.ni.com/tutorial/2801/en/#:~:text=The%20secondary%20address%20is%20actually,the%20last%20bit%20is%20not
         # We return a dict looking like this {"pad": pad, "sad": 0} or {"pad": pad, "sad": sad}
         # So we first split the string, then create a list of ints
         result = [int(addr) for i, addr in enumerate(result.split(b' '))]
@@ -356,10 +387,10 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         # Create the dict, zip_longest() pads the result list with 0 if needed
         return dict(zip_longest(indices, result, fillvalue=0))
 
-    async def set_eoi(self, enable=True):
+    async def set_eoi(self, enable: bool = True) -> None:
         """
-        Enable or disable asserting the EOI (End of Identify) line after each transfer. Some older devices might not want
-        or need the EOI line to be signaled after each command.
+        Enable or disable asserting the EOI (End of Identify) line after each transfer. Some older devices might not
+        want or need the EOI line to be signaled after each command.
 
         Parameters
         ----------
@@ -369,16 +400,16 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         async with self.__conn.meta['lock']:
             await self.__set_eoi(enable)
 
-    async def __set_eoi(self, enable):
+    async def __set_eoi(self, enable: bool) -> None:
         """
-        This functios needs a lock on self.__conn.meta['lock'].
+        This function needs a lock on self.__conn.meta['lock'].
         """
         enable = bool(int(enable))
         await self.__write(f"++eoi {enable:d}".encode('ascii'))
         self.__state['send_eoi'] = bool(int(enable))
         self.__conn.meta['send_eoi'] = bool(int(enable))
 
-    async def get_eoi(self):
+    async def get_eoi(self) -> bool:
         """
         Returns
         -------
@@ -388,7 +419,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         async with self.__conn.meta['lock']:
             return bool(int(await self.__query_command(b'++eoi')))
 
-    async def set_eos_mode(self, mode):
+    async def set_eos_mode(self, mode: EosMode) -> None:
         """
         Some older devices do not listen to the EOI, but instead for \r, \n or \r\n. Enable this setting by choosing
         the appropriate EosMode enum. The GPIB controller will then automatically append the control character when
@@ -402,9 +433,9 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         async with self.__conn.meta['lock']:
             await self.__set_eos_mode(mode)
 
-    async def __set_eos_mode(self, mode):
+    async def __set_eos_mode(self, mode: EosMode) -> None:
         """
-        This functios needs a lock on self.__conn.meta['lock'].
+        This function needs a lock on self.__conn.meta['lock'].
         """
         assert isinstance(mode, EosMode)
 
@@ -412,17 +443,17 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         self.__state['eos_mode'] = mode
         self.__conn.meta['eos_mode'] = mode
 
-    async def get_eos_mode(self):
+    async def get_eos_mode(self) -> EosMode:
         """
         Returns
         -------
         EosMode
-            the characers appended after each transfer
+            the characters appended after each transfer
         """
         async with self.__conn.meta['lock']:
             return EosMode(int(await self.__query_command(b'++eos')))
 
-    async def set_eot(self, enable):
+    async def set_eot(self, enable: bool) -> None:
         """
         Enable this to append a character if an EOI is triggered. THe character will be appended to the data coming from
         the device. This is useful, if the device itself does not append a character, because the network protocol does
@@ -436,9 +467,9 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         async with self.__conn.meta['lock']:
             await self.__set_eot(enable)
 
-    async def __set_eot(self, enable):
+    async def __set_eot(self, enable: bool) -> None:
         """
-        This functios needs a lock on self.__conn.meta['lock'].
+        This function needs a lock on self.__conn.meta['lock'].
         """
         enable = bool(int(enable))
 
@@ -446,7 +477,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         self.__state['send_eot'] = bool(int(enable))
         self.__conn.meta['send_eot'] = bool(int(enable))
 
-    async def get_eot(self):
+    async def get_eot(self) -> bool:
         """
         Returns
         -------
@@ -456,7 +487,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         async with self.__conn.meta['lock']:
             return bool(int(await self.__query_command(b'++eot_enable')))
 
-    async def set_eot_char(self, character):
+    async def set_eot_char(self, character: str) -> None:
         """
         Append a character to the device output. Most GPIB devices only use 7-bit characters. So it is typically safe
         to use a character in the range of 0x80 to 0xFF.
@@ -464,31 +495,31 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
 
         Parameters
         ----------
-        character: byte
-            characer to be appended
+        character: str
+            character to be appended
         """
         async with self.__conn.meta['lock']:
             await self.__set_eot_char(character)
 
-    async def __set_eot_char(self, character):
+    async def __set_eot_char(self, character: str) -> None:
         """
-        This functios needs a lock on self.__conn.meta['lock'].
+        This function needs a lock on self.__conn.meta['lock'].
         """
         await self.__write(f"++eot_char {ord(character):d}".encode('ascii'))
         self.__state['eot_char'] = character
         self.__conn.meta['eot_char'] = character
 
-    async def get_eot_char(self):
+    async def get_eot_char(self) -> str:
         """
         Returns
         -------
-        byte
+        str
             character, which will be appended after receiving an EOI from the device.
         """
         async with self.__conn.meta['lock']:
             return chr(int(await self.__query_command(b'++eot_char')))
 
-    async def remote_enable(self, enable=True):
+    async def remote_enable(self, enable: bool = True) -> None:
         """
         Set the device to remote mode, typically disabling the front panel.
 
@@ -504,7 +535,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
             else:
                 await self.__ibloc()
 
-    async def timeout(self, value):
+    async def timeout(self, value: int) -> None:
         """
         Set the GPIB timeout for a read. This is not the network timeout, which comes on top of that.
 
@@ -516,23 +547,23 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         async with self.__conn.meta['lock']:
             await self.__timeout(value)
 
-    async def __timeout(self, value):
+    async def __timeout(self, value: int):
         """
-        This functios needs a lock on self.__conn.meta['lock'].
+        This function needs a lock on self.__conn.meta['lock'].
         """
         assert value >= 1   # Allow values greater than 3000 ms, because the wait() method can take arbitrary values
 
-        await self.__write(f"++read_tmo_ms {min(value,3000):d}".encode('ascii')) # Cap value to 3000 max
+        await self.__write(f"++read_tmo_ms {min(value,3000):d}".encode('ascii'))  # Cap value to 3000 max
         self.__state['timeout'] = value
         self.__conn.meta['timeout'] = value
 
-    async def __ibloc(self):
+    async def __ibloc(self) -> None:
         """
-        This functios needs a lock on self.__conn.meta['lock'].
+        This function needs a lock on self.__conn.meta['lock'].
         """
         await self.__write(b'++loc')
 
-    async def ibloc(self):
+    async def ibloc(self) -> None:
         """
         Set the device to local mode, return control to the front panel.
         """
@@ -540,7 +571,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
             await self.__ensure_state()
             await self.__ibloc()
 
-    async def get_status(self):
+    async def get_status(self) -> int:
         """
         Returns
         -------
@@ -551,7 +582,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
             await self.__ensure_state()
             return int(await self.__query_command(b'++status'))
 
-    async def set_status(self, value):
+    async def set_status(self, value: int) -> None:
         """
         Sets the status byte, that will be sent to a controller if serial polled by the
         controller.
@@ -567,7 +598,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
             await self.__ensure_state()
             await self.__write(f"++status {value:d}".encode('ascii'))
 
-    async def interface_clear(self):
+    async def interface_clear(self) -> None:
         """
         Assert the Interface Clear (IFC) line and force the instrument to listen.
         """
@@ -575,7 +606,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
             await self.__ensure_state()
             await self.__write(b'++ifc')
 
-    async def clear(self):
+    async def clear(self) -> None:
         """
         Send the Selected Device Clear (SDC) event, which orders the device to clear its input and output buffer.
         """
@@ -583,7 +614,13 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
             await self.__ensure_state()
             await self.__write(b'++clr')
 
-    async def trigger(self, devices=()):
+    async def trigger(
+            self,
+            devices: Union[
+                tuple[Union[int, tuple[int, int], list[int]], ...],
+                list[Union[int, tuple[int, int], list[int]]]
+            ] = ()
+    ) -> None:
         """
         Trigger the selected instrument, or if specified a list of devices.
         The list of devices can either be a list (or tuple) of pads or a list/tuple of lists/tuples of pads and sads.
@@ -591,7 +628,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         Examples: devices=(22,10) will trigger pad 22 and 10
                   devices=((22,96),10) will trigger (pad 22, sad 96) and pad 10
 
-        devices: tuple of int or tuple of tuple of int
+        devices: tuple of int or tuple of tuples of int
             tuple of pads or tuple of (pad, sad) tuples
         """
         assert len(devices) <= 15
@@ -608,14 +645,14 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
             for device in devices:
                 if isinstance(device, (list, tuple)):
                     pad, sad = device
-                    assert (0<= pad <=30) and (sad==0 or (0x60 <= sad <= 0x7E))
+                    assert (0 <= pad <= 30) and (sad == 0 or (0x60 <= sad <= 0x7E))
                     command += b' ' + bytes(str(int(pad)), 'ascii') + b' ' + bytes(str(int(sad)), 'ascii')
                 else:
                     assert 0 <= device <= 30
                     command += b' ' + bytes(str(int(device)), 'ascii')
             await self.__write(command)
 
-    async def version(self):
+    async def version(self) -> str:
         """
         Returns
         -------
@@ -626,9 +663,10 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
             # Return a unicode string
             return (await self.__query_command(b'++ver')).decode()
 
-    async def serial_poll(self, pad=0, sad=0):
+    async def serial_poll(self, pad: int = 0, sad: int = 0) -> int:
         """
-        Perform a serial poll of the instrument at the given address. If no address is given poll the current instrument.
+        Perform a serial poll of the instrument at the given address.
+        If no address is given poll the current instrument.
 
         Parameters
         ----------
@@ -642,7 +680,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         int
             status byte of the device
         """
-        assert (0 <= pad <= 30) and (sad==0 or (0x60 <= sad <= 0x7E))
+        assert (0 <= pad <= 30) and (sad == 0 or (0x60 <= sad <= 0x7E))
 
         command = b'++spoll'
         if pad != 0:
@@ -657,7 +695,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
                 await self.__ensure_state()
                 return int(await self.__query_command(command))
 
-    async def __wait(self):
+    async def __wait(self) -> None:
         """
         The Prologix controller does not support callbacks, so this functions polls the controller
         until it finds the device has set the SRQ bit.
@@ -665,7 +703,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         while "waiting":
             sleep_task = asyncio.create_task(asyncio.sleep(self.__wait_delay/1000))
 
-            # Test if the SRQ line has been pulled low. Then test if this was done by the instrument managed by this class.
+            # Test if the SRQ line has been pulled low and if this was done by the instrument managed by this class.
             if await self.test_srq():
                 spoll = await self.serial_poll(self.__state['pad'], self.__state['sad'])
                 if spoll & (1 << 6):    # SRQ bit set
@@ -676,10 +714,10 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
             # Now wait until self.__wait_delay is over. Then start a new request.
             await sleep_task
 
-    async def wait(self, mask):
+    async def wait(self, mask: int) -> None:
         """
-        Wait for an SRQ of the selected device. Wait at least self.__wait_delay before querying again, but return early, if the
-        bit is set. The available mask flags are defined in RqsMask.
+        Wait for an SRQ of the selected device. Wait at least self.__wait_delay before querying again, but return early,
+        if the bit is set. The available mask flags are defined in RqsMask.
 
         Parameters
         ----------
@@ -695,7 +733,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         else:
             await self.__wait()
 
-    async def test_srq(self):
+    async def test_srq(self) -> bool:
         """
         Check if the service request line is asserted. This can be used by the device to get the attention of the
         controller without constantly polling read().
@@ -707,15 +745,15 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         """
         return bool(int(await self.__query_command(b'++srq')))
 
-    async def reset(self):
+    async def reset(self) -> None:
         """
         Reset the controller. It takes about five seconds for the controller to reboot.
         """
         await self.__write(b'++rst')
 
-    async def set_save_config(self, enable=False):
+    async def set_save_config(self, enable: bool = False) -> None:
         """
-        Save the the following configuration options to the controller EEPROM:
+        Save the following configuration options to the controller EEPROM:
         DeviceMode, GPIB address, read-after-write, EOI, EOS, EOT, EOT character and the timeout
         Note: this will wear out the EEPROM if used very, very frequently. It is disabled by default.
 
@@ -727,7 +765,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         enable = bool(int(enable))
         await self.__write(f"++savecfg {enable:d}".encode('ascii'))
 
-    async def get_save_config(self):
+    async def get_save_config(self) -> bool:
         """
         Check if the following options are automatically saved to the EEPROM:
         DeviceMode, GPIB address, read-after-write, EOI, EOS, EOT, EOT character and the timeout
@@ -739,9 +777,9 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         """
         return bool(int(await self.__query_command(b'++savecfg')))
 
-    async def set_listen_only(self, enable):
+    async def set_listen_only(self, enable: bool) -> None:
         """
-        Set the controller to liste-only mode. This will cause the controller to listen to all traffic,
+        Set the controller to listen-only mode. This will cause the controller to listen to all traffic,
         irrespective of the current address.
 
         Parameters
@@ -751,7 +789,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         """
         await self.__write(f"++lon {enable:d}".encode('ascii'))
 
-    async def get_listen_only(self):
+    async def get_listen_only(self) -> bool:
         """
         Returns
         -------
@@ -760,7 +798,7 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         """
         return bool(int(await self.__query_command(b'++lon')))
 
-    async def __set_device_mode(self, device_mode):
+    async def __set_device_mode(self, device_mode: DeviceMode) -> None:
         """
         Either configure the GPIB controller as a controller or device.
 
@@ -775,14 +813,14 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
         self.__state['device_mode'] = device_mode
         self.__conn.meta['device_mode'] = device_mode
 
-    def set_wait_delay(self, value):
+    def set_wait_delay(self, value: int) -> None:
         """
         Set the number of ms to wait between serial polling the status byte, when waiting.
 
         Parameters
         ----------
         value: int
-            time in ms to wait between serial polling the satatus the device when waiting for state
+            time in ms to wait between serial polling the status the device when waiting for state
             changes. Minimum value: 100 ms, maximum value: the timeout set the GPIB device.
 
         See Also
@@ -793,20 +831,36 @@ class AsyncPrologixGpib():  # pylint: disable=too-many-public-methods
 
         self.__wait_delay = min(max(value, 100), self.__state['timeout'])
 
+
 class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
     """
     Acts as the GPIB bus controller.
     """
     @property
-    def hostname(self):
+    def hostname(self) -> str:
         return self._conn.hostname
 
     @property
-    def port(self):
+    def port(self) -> int:
         return self._conn.port
 
-    def __init__(self, hostname, pad, port=1234, sad=0, timeout=3000, send_eoi=True, eos_mode=EosMode.APPEND_NONE, ethernet_timeout=1000, wait_delay=250):   # timeout is in ms, pylint: disable=too-many-arguments
-        conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=(timeout+ethernet_timeout)/1000)   # timeout is in seconds
+    def __init__(
+            self,
+            hostname: str,
+            pad: int,
+            port: int = 1234,
+            sad: int = 0,
+            timeout: int = 3000,    # in ms
+            send_eoi: bool = True,
+            eos_mode: EosMode = EosMode.APPEND_NONE,
+            ethernet_timeout: int = 1000,   # in ms
+            wait_delay: int = 250  # in ms
+    ) -> None:  # pylint: disable=too-many-arguments
+        conn = AsyncSharedIPConnection(
+            hostname=hostname,
+            port=port,
+            timeout=(timeout+ethernet_timeout)/1000  # in seconds
+        )
         super().__init__(
           conn=conn,
           pad=pad,
@@ -818,36 +872,50 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpib):
           wait_delay=wait_delay,
         )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Prologix GPIB Controller of device ({self.pad},{self.sad}) connected at '{self.hostname}:{self.port}'"
 
-    async def set_listen_only(self, enable):
+    async def set_listen_only(self, enable: bool) -> None:
         raise TypeError("Not supported in controller mode")
 
-    async def get_listen_only(self):
+    async def get_listen_only(self) -> None:
         raise TypeError("Not supported in controller mode")
 
-    async def set_status(self, value):
+    async def set_status(self, value: int) -> None:
         raise TypeError("Not supported in controller mode")
 
-    async def get_status(self):
+    async def get_status(self) -> None:
         raise TypeError("Not supported in controller mode")
 
 
 class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
     """
-    Acts as the a GPIB device on the bus.
+    Acts as a GPIB device on the bus.
     """
     @property
-    def hostname(self):
+    def hostname(self) -> str:
         return self._conn.hostname
 
     @property
-    def port(self):
+    def port(self) -> int:
         return self._conn.port
 
-    def __init__(self, hostname, pad, port=1234, sad=0, send_eoi=True, eos_mode=EosMode.APPEND_NONE, ethernet_timeout=1000, wait_delay=250):   # timeout is in ms, pylint: disable=too-many-arguments
-        conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=ethernet_timeout/1000)   # timeout is in seconds
+    def __init__(
+            self,
+            hostname: str,
+            pad: int,
+            port: int = 1234,
+            sad: int = 0,
+            send_eoi: bool = True,
+            eos_mode: EosMode = EosMode.APPEND_NONE,
+            ethernet_timeout: int = 1000,    # in ms
+            wait_delay: int = 250   # in ms
+    ) -> None:   # pylint: disable=too-many-arguments
+        conn = AsyncSharedIPConnection(
+            hostname=hostname,
+            port=port,
+            timeout=ethernet_timeout/1000   # in seconds
+        )
         super().__init__(
           conn=conn,
           pad=pad,
@@ -862,41 +930,52 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpib):
     def __str__(self):
         return f"Prologix GPIB device ({self.pad},{self.sad}) at '{self.hostname}:{self.port}'"
 
-    async def set_read_after_write(self, enable):
+    async def set_read_after_write(self, enable: bool) -> None:
         raise TypeError("Not supported in device mode")
 
-    async def get_read_after_write(self):
+    async def get_read_after_write(self) -> None:
         raise TypeError("Not supported in device mode")
 
-    async def clear(self):
+    async def clear(self) -> None:
         raise TypeError("Not supported in device mode")
 
-    async def interface_clear(self):
+    async def interface_clear(self) -> None:
         raise TypeError("Not supported in device mode")
 
-    async def remote_enable(self, enable=True):
+    async def remote_enable(self, enable: bool = True) -> None:
         raise TypeError("Not supported in device mode")
 
-    async def ibloc(self):
+    async def ibloc(self) -> None:
         raise TypeError("Not supported in device mode")
 
-    async def read(self, length=None, character=None, force_poll=True):
+    async def read(
+            self,
+            length: Optional[int] = None,
+            character: Optional[bytes] = None,
+            force_poll: bool = True
+    ) -> None:
         raise TypeError("Not supported in device mode")
 
-    async def timeout(self, value):
+    async def timeout(self, value: int) -> None:
         raise TypeError("Not supported in device mode")
 
-    async def serial_poll(self, pad=0, sad=0):
+    async def serial_poll(self, pad: int = 0, sad: int = 0) -> None:
         raise TypeError("Not supported in device mode")
 
-    async def test_srq(self):
+    async def test_srq(self) -> None:
         raise TypeError("Not supported in device mode")
 
-    async def trigger(self, devices=()):
+    async def trigger(
+            self,
+            devices: Union[
+                tuple[Union[int, tuple[int, int], list[int]], ...],
+                list[Union[int, tuple[int, int], list[int]]]
+            ] = ()
+    ) -> None:
         raise TypeError("Not supported in device mode")
 
-    async def wait(self, mask):
+    async def wait(self, mask: int) -> None:
         raise TypeError("Not supported in device mode")
 
-    def set_wait_delay(self, value):
+    def set_wait_delay(self, value: int) -> None:
         raise TypeError("Not supported in device mode")
