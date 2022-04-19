@@ -950,7 +950,8 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
 
 class AsyncPrologixGpibEthernetController(AsyncPrologixGpibController):
     """
-    Acts as the GPIB bus controller.
+    Acts as the GPIB bus controller. It is a convenience class that uses the `AsyncSharedIPConnection` and
+    simplifies the setup of an `AsyncPrologixGpibController`.
     """
     @property
     def hostname(self) -> str:
@@ -990,7 +991,8 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpibController):
 
 class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpibDevice):
     """
-    Acts as a GPIB device on the bus.
+    Acts as a GPIB device on the bus. It is a convenience class that uses the `AsyncSharedIPConnection` and
+    simplifies the setup of an `AsyncPrologixGpibDevice`.
     """
     @property
     def hostname(self) -> str:
