@@ -440,7 +440,7 @@ class AsyncSharedIPConnection:
         self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout
         self.__hostname = hostname
         self.__port = port
-        self.__conn = None
+        self.__conn: Optional[_AsyncPooledIPConnection] = None
 
     async def __aenter__(self) -> Self:
         await self.connect()

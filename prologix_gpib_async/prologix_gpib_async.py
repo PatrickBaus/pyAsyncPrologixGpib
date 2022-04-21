@@ -11,7 +11,7 @@ from enum import Enum, Flag, unique
 from itertools import zip_longest
 import re   # needed to escape characters in the byte stream
 
-from .ip_connection import AsyncSharedIPConnection
+from .ip_connection import AsyncIPConnection, AsyncSharedIPConnection
 
 
 @unique
@@ -65,7 +65,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
     The base class used by both the Prologix GPIB controller and GPIB device.
     """
     @property
-    def _conn(self) -> AsyncSharedIPConnection:
+    def _conn(self) -> Union[AsyncSharedIPConnection, AsyncIPConnection]:
         return self.__conn
 
     @property
@@ -78,7 +78,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
 
     def __init__(
             self,
-            conn: AsyncSharedIPConnection,
+            conn: Union[AsyncSharedIPConnection, AsyncIPConnection],
             pad: int,
             device_mode: DeviceMode,
             sad: int,
@@ -90,8 +90,8 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         """
         Parameters
         ----------
-        conn: AsyncSharedIPConnection
-            a pooled ip connection
+        conn: AsyncSharedIPConnection or AsyncIPConnection
+            either a connection from the pool or a standalone connection
         pad: int
             primary address
         device_mode: DeviceMode
@@ -124,21 +124,10 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
     def __str__(self) -> str:
         return f"Prologix GPIB at {str(self.__conn)}"
 
-    async def __aenter__(self) -> Self:
-        await self.connect()
-        return self
-
-    async def __aexit__(
-            self, exc_type: Optional[Type[BaseException]],
-            exc: Optional[BaseException],
-            traceback: Optional[TracebackType]
-    ) -> None:
-        await self.disconnect()
-
     async def connect(self) -> None:
         """
         Connect to the ethernet controller and configure the device as a GPIB controller. By default, the configuration
-        will not be saved to EEPROM to safe write cycles.
+        will not be saved to EEPROM to save write cycles.
         """
         try:
             await self.__conn.connect()
@@ -988,6 +977,17 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpibController):
           wait_delay=wait_delay,
         )
 
+    async def __aenter__(self) -> Self:
+        await self.connect()
+        return self
+
+    async def __aexit__(
+            self, exc_type: Optional[Type[BaseException]],
+            exc: Optional[BaseException],
+            traceback: Optional[TracebackType]
+    ) -> None:
+        await self.disconnect()
+
 
 class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpibDevice):
     """
@@ -1026,3 +1026,14 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpibDevice):
           eos_mode=eos_mode,
           wait_delay=wait_delay,
         )
+
+    async def __aenter__(self) -> Self:
+        await self.connect()
+        return self
+
+    async def __aexit__(
+            self, exc_type: Optional[Type[BaseException]],
+            exc: Optional[BaseException],
+            traceback: Optional[TracebackType]
+    ) -> None:
+        await self.disconnect()
