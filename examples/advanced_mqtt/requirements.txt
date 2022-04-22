@@ -1,0 +1,4 @@
+asyncio-mqtt==0.12.1
+-e git+https://github.com/PatrickBaus/pyAsyncPrologixGpib@6300cee312aa78a5ae706992c3e1cce9f09af2d1#egg=prologix_gpib_async
+simplejson==3.17.6
+typing-extensions==4.2.0
