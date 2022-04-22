@@ -3,6 +3,8 @@
 This module implements the API used by the Prologix GPIB adapters in pure python using AsyncIO.
 The manual can be found here: http://prologix.biz/downloads/PrologixGpibEthernetManual.pdf
 """
+from __future__ import annotations
+
 import asyncio
 from types import TracebackType
 from typing import Optional, Type, Union
