@@ -270,6 +270,7 @@ class AsyncIPConnection:
         """
         if not self.is_connected:
             self.__host = self.__host[0] if hostname is None else hostname, self.__host[1] if port is None else port
+            hostname, port = self.__host
             try:
                 self.__reader, self.__writer = await asyncio.wait_for(
                     asyncio.open_connection(host=hostname, port=port),
