@@ -164,7 +164,8 @@ class AsyncIPConnection:
         return self
 
     async def __aexit__(
-            self, exc_type: Optional[Type[BaseException]],
+            self,
+            exc_type: Optional[Type[BaseException]],
             exc: Optional[BaseException],
             traceback: Optional[TracebackType]
     ) -> None:
@@ -451,7 +452,8 @@ class AsyncSharedIPConnection:
         return self
 
     async def __aexit__(
-            self, exc_type: Optional[Type[BaseException]],
+            self,
+            exc_type: Optional[Type[BaseException]],
             exc: Optional[BaseException],
             traceback: Optional[TracebackType]
     ) -> None:

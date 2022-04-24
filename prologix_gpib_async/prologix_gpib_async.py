@@ -984,7 +984,8 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpibController):
         return self
 
     async def __aexit__(
-            self, exc_type: Optional[Type[BaseException]],
+            self,
+            exc_type: Optional[Type[BaseException]],
             exc: Optional[BaseException],
             traceback: Optional[TracebackType]
     ) -> None:
@@ -1034,7 +1035,8 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpibDevice):
         return self
 
     async def __aexit__(
-            self, exc_type: Optional[Type[BaseException]],
+            self,
+            exc_type: Optional[Type[BaseException]],
             exc: Optional[BaseException],
             traceback: Optional[TracebackType]
     ) -> None:
