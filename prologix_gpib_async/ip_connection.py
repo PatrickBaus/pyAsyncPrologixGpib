@@ -71,9 +71,13 @@ class _AsyncIPConnectionPool:
         try:
             if (hostname, port) not in cls._connections:
                 # Create a new connection
-                cls._connections[(hostname, port)] = _AsyncPooledIPConnection(timeout=timeout)
+                cls._connections[(hostname, port)] = _AsyncPooledIPConnection(
+                    hostname=hostname,
+                    port=port,
+                    timeout=timeout
+                )
 
-            await cls._connections[(hostname, port)].connect_client(hostname, port, client)
+            await cls._connections[(hostname, port)].connect_client(client)
 
             return cls._connections[(hostname, port)]
         except Exception:
@@ -113,6 +117,26 @@ class AsyncIPConnection:
     in Python AsyncIO.
     """
     SEPARATOR = b'\n'
+
+    @property
+    def hostname(self) -> str:
+        """
+        Returns
+        -------
+        str
+            hostname of the connection
+        """
+        return self.__host[0]
+
+    @property
+    def port(self) -> int:
+        """
+        Returns
+        -------
+        int
+            port of the connection
+        """
+        return self.__host[1]
 
     @property
     def timeout(self) -> float:
@@ -170,6 +194,9 @@ class AsyncIPConnection:
             traceback: Optional[TracebackType]
     ) -> None:
         await self.disconnect()
+
+    def __str__(self) -> str:
+        return f"IP connection to {self.hostname}:{self.port}"
 
     async def write(self, data: bytes) -> None:
         """
@@ -336,34 +363,30 @@ class _AsyncPooledIPConnection(AsyncIPConnection):
         """
         return bool(self.__clients)
 
-    def __init__(self, timeout: Optional[float] = None) -> None:
+    def __init__(self, hostname: str, port: int, timeout: Optional[float] = None) -> None:
         """
         Parameters
         ----------
         timeout: float, default=None
             timeout of all operation in seconds. Use DEFAULT_WAIT_TIMEOUT if None is set
         """
-        super().__init__(timeout=timeout)
+        super().__init__(hostname=hostname, port=port, timeout=timeout)
         self.__clients = set()
         self.meta = {}    # Metadata used to store connection specific states
         self.__lock = asyncio.Lock()
 
-    async def connect_client(self, hostname: str, port: int, client: "AsyncSharedIPConnection") -> None:
+    async def connect_client(self, client: "AsyncSharedIPConnection") -> None:
         """
         Connect to the host. This function can be called multiple times by the client. It
         will return immediately if already connected and if no one is holding the lock.
 
         Parameters
         ----------
-        hostname: str
-            hostname of the connection
-        port: int
-            port of the connection
         client: AsyncSharedIPConnection
             the shared ip connection
         """
         if client not in self.__clients:
-            # First add ourselves to the list of clients, so the connection will not be released, while we wait for
+            # First add the client to the list of clients, so the connection will not be released, while we wait for
             # the release of the lock
             self.__clients.add(client)
 
@@ -374,9 +397,9 @@ class _AsyncPooledIPConnection(AsyncIPConnection):
         # afterwards.
         try:
             async with self.__lock:
-                await super().connect(hostname, port)
+                await super().connect()
         except Exception:
-            # If there is *any* error, remove ourselves from the list of connected clients
+            # If there is *any* error, remove the client from the list of connected clients
             self.__clients.remove(client)
             # then pass on the error
             raise
