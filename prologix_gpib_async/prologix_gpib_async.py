@@ -826,7 +826,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
 class AsyncPrologixGpibController(AsyncPrologixGpib):
     def __init__(
             self,
-            conn: AsyncSharedIPConnection,
+            conn: Union[AsyncSharedIPConnection, AsyncIPConnection],
             pad: int,
             sad: int = 0,
             timeout: int = 3000,    # in ms
