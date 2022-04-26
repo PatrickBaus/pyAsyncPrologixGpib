@@ -11,7 +11,10 @@ import errno    # The error numbers can be found in /usr/include/asm-generic/err
 import logging
 from types import TracebackType
 from typing import Any, Optional, Type
-from typing_extensions import Self
+try:
+    from typing import Self  # Python >=3.11
+except ImportError:
+    from typing_extensions import Self
 
 
 class NotConnectedError(ConnectionError):

@@ -8,7 +8,10 @@ from __future__ import annotations
 import asyncio
 from types import TracebackType
 from typing import Optional, Type, Union
-from typing_extensions import Self
+try:
+    from typing import Self  # Python >=3.11
+except ImportError:
+    from typing_extensions import Self
 from enum import Enum, Flag, unique
 from itertools import zip_longest
 import re   # needed to escape characters in the byte stream
@@ -72,10 +75,22 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
 
     @property
     def pad(self) -> int:
+        """
+        Returns
+        -------
+        int
+            The device primary address
+        """
         return self.__state['pad']
 
     @property
     def sad(self) -> int:
+        """
+        Returns
+        -------
+        int
+            The device secondary address
+        """
         return self.__state['sad']
 
     def __init__(
@@ -824,6 +839,9 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
 
 
 class AsyncPrologixGpibController(AsyncPrologixGpib):
+    """
+    A Prologix GPIB controller with a custom connection object. It acts as a controller on the GPIB bus.
+    """
     def __init__(
             self,
             conn: Union[AsyncSharedIPConnection, AsyncIPConnection],
@@ -863,7 +881,7 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
 
 class AsyncPrologixGpibDevice(AsyncPrologixGpib):
     """
-    Acts as a GPIB device on the bus.
+    A Prologix GPIB evice with a custom connection object. It acts as a device on the GPIB bus.
     """
     def __init__(
             self,
@@ -946,10 +964,22 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpibController):
     """
     @property
     def hostname(self) -> str:
+        """
+        Returns
+        -------
+        str
+            The hostname of the device
+        """
         return self._conn.hostname
 
     @property
     def port(self) -> int:
+        """
+        Returns
+        -------
+        int
+            The port of the ethernet connection
+        """
         return self._conn.port
 
     def __init__(
@@ -999,10 +1029,22 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpibDevice):
     """
     @property
     def hostname(self) -> str:
+        """
+        Returns
+        -------
+        str
+            The hostname of the device
+        """
         return self._conn.hostname
 
     @property
     def port(self) -> int:
+        """
+        Returns
+        -------
+        int
+            The port of the ethernet connection
+        """
         return self._conn.port
 
     def __init__(
