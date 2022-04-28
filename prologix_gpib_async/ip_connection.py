@@ -309,7 +309,7 @@ class AsyncIPConnection:
                     timeout=self.__timeout
                 )
             except OSError as error:
-                if error.errno == errno.ENETUNREACH:
+                if error.errno in (errno.ENETUNREACH, errno.EHOSTUNREACH):
                     raise NetworkError(
                         f"Prologix IP connection error: Cannot connect to address '{hostname}:{port}'"
                     ) from None
