@@ -852,6 +852,24 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
             eos_mode: EosMode = EosMode.APPEND_NONE,
             wait_delay: int = 250  # in ms
     ) -> None:  # pylint: disable=too-many-arguments
+        """
+        Parameters
+        ----------
+        conn: AsyncSharedIPConnection or AsyncIPConnection
+            either a connection from the pool or a standalone connection
+        pad: int
+            primary address
+        sad: int
+            secondary address
+        timeout: int
+            timeout for operations in ms
+        send_eoi: bool
+            assert EOI on write
+        eos_mode: bool:
+            end-of-string termination
+        wait_delay: int
+            number of ms to wait in between serial polling a device when waiting
+        """
         super().__init__(
           conn=conn,
           pad=pad,
@@ -892,6 +910,22 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
             eos_mode: EosMode = EosMode.APPEND_NONE,
             wait_delay: int = 250   # in ms
     ) -> None:   # pylint: disable=too-many-arguments
+        """
+        Parameters
+        ----------
+        conn: AsyncSharedIPConnection or AsyncIPConnection
+            either a connection from the pool or a standalone connection
+        pad: int
+            primary address
+        sad: int
+            secondary address
+        send_eoi: bool
+            assert EOI on write
+        eos_mode: bool:
+            end-of-string termination
+        wait_delay: int
+            number of ms to wait in between serial polling a device when waiting
+        """
         super().__init__(
           conn=conn,
           pad=pad,
