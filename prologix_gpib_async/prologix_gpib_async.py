@@ -141,10 +141,22 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
     def __str__(self) -> str:
         return f"Prologix GPIB at {str(self.__conn)}"
 
+    async def __aenter__(self) -> Self:
+        await self.connect()
+        return self
+
+    async def __aexit__(
+            self,
+            exc_type: Optional[Type[BaseException]],
+            exc: Optional[BaseException],
+            traceback: Optional[TracebackType]
+    ) -> None:
+        await self.disconnect()
+
     async def connect(self) -> None:
         """
-        Connect to the ethernet controller and configure the device as a GPIB controller. By default, the configuration
-        will not be saved to EEPROM to save write cycles.
+        Connect to the device and configure it. By default, the configuration will not be saved to EEPROM to save
+        write cycles.
         """
         try:
             await self.__conn.connect()
@@ -1043,18 +1055,6 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpibController):
           wait_delay=wait_delay,
         )
 
-    async def __aenter__(self) -> Self:
-        await self.connect()
-        return self
-
-    async def __aexit__(
-            self,
-            exc_type: Optional[Type[BaseException]],
-            exc: Optional[BaseException],
-            traceback: Optional[TracebackType]
-    ) -> None:
-        await self.disconnect()
-
 
 class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpibDevice):
     """
@@ -1105,15 +1105,3 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpibDevice):
           eos_mode=eos_mode,
           wait_delay=wait_delay,
         )
-
-    async def __aenter__(self) -> Self:
-        await self.connect()
-        return self
-
-    async def __aexit__(
-            self,
-            exc_type: Optional[Type[BaseException]],
-            exc: Optional[BaseException],
-            traceback: Optional[TracebackType]
-    ) -> None:
-        await self.disconnect()

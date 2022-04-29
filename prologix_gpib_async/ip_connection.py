@@ -181,6 +181,7 @@ class AsyncIPConnection:
         self.__host = hostname, port
         self.__writer, self.__reader = None, None
         self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout
+        self.meta = {}    # Metadata can be used to store connection specific states
 
         self.__logger = logging.getLogger(__name__)
         self.__logger.setLevel(logging.WARNING)     # Only log really important messages
@@ -375,7 +376,6 @@ class _AsyncPooledIPConnection(AsyncIPConnection):
         """
         super().__init__(hostname=hostname, port=port, timeout=timeout)
         self.__clients = set()
-        self.meta = {}    # Metadata used to store connection specific states
         self.__lock = asyncio.Lock()
 
     async def connect_client(self, client: "AsyncSharedIPConnection") -> None:
@@ -388,10 +388,9 @@ class _AsyncPooledIPConnection(AsyncIPConnection):
         client: AsyncSharedIPConnection
             the shared ip connection
         """
-        if client not in self.__clients:
-            # First add the client to the list of clients, so the connection will not be released, while we wait for
-            # the release of the lock
-            self.__clients.add(client)
+        # First add the client to the set of clients, so the connection will not be released, while we wait for
+        # the release of the lock
+        self.__clients.add(client)
 
         # Lock the connection and connect, this will return immediately, if we are connected and
         # no one is holding the lock.
@@ -451,7 +450,8 @@ class AsyncSharedIPConnection:
         Returns
         -------
         dict
-            the connection metadata. This is the state of the underlying hardware.
+            connection metadata. This can be used to store state of the underlying hardware. Always lock the connection
+            before changing metadata.
         """
         if self.__conn is None:
             raise NotConnectedError('Prologix IP connection not connected')
