@@ -151,16 +151,6 @@ class AsyncIPConnection:
         """
         return self.__timeout
 
-    @timeout.setter
-    def timeout(self, value: float) -> None:
-        """
-        Parameters
-        ----------
-        value: float
-            timeout of all operation in seconds
-        """
-        self.__timeout = abs(float(value))
-
     @property
     def is_connected(self) -> bool:
         """
@@ -466,6 +456,16 @@ class AsyncSharedIPConnection:
             port of the connection
         """
         return self.__port
+
+    @property
+    def timeout(self) -> float:
+        """
+        Returns
+        -------
+        float
+            timeout for async operations in seconds
+        """
+        return self.__timeout
 
     def __init__(self, hostname: str, port: int = 1234, timeout: Optional[float] = None):
         self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout
