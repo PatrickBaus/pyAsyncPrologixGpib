@@ -99,7 +99,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
             pad: int,
             device_mode: DeviceMode,
             sad: int,
-            timeout: int,
+            timeout: float,
             send_eoi: bool,
             eos_mode: EosMode,
             wait_delay: int
@@ -115,8 +115,8 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
             run the controller either as a device or a bus controller
         sad: int
             secondary address
-        timeout: int
-            timeout for operations in ms
+        timeout: float
+            GPIB timeout for operations in seconds
         send_eoi: bool
             assert EOI on write
         eos_mode: bool:
@@ -553,25 +553,35 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
             else:
                 await self.__ibloc()
 
-    async def timeout(self, value: int) -> None:
+    def get_connection_timeout(self) -> float:
+        """
+        Returns
+        -------
+        float
+            The GPIB timeout + the connection timeout. This is not the GPIB timeout as set by `timeout()`.
+        """
+        return self.__conn.timeout
+
+    async def timeout(self, value: float) -> None:
         """
         Set the GPIB timeout for a read. This is not the network timeout, which comes on top of that.
 
         Parameters
         ----------
-        value: int
-            timeout in ms
+        value: float
+            timeout in seconds
         """
         async with self.__conn.meta['lock']:
             await self.__timeout(value)
 
-    async def __timeout(self, value: int):
+    async def __timeout(self, value: float):
         """
         This function needs a lock on self.__conn.meta['lock'].
         """
-        assert value >= 1   # Allow values greater than 3000 ms, because the wait() method can take arbitrary values
+        value_ms = round(value * 1000)   # convert to ms
+        assert value_ms >= 1   # Allow values greater than 3000 ms, because the wait() method can take arbitrary values
 
-        await self.__write(f"++read_tmo_ms {min(value,3000):d}".encode('ascii'))  # Cap value to 3000 max
+        await self.__write(f"++read_tmo_ms {min(value_ms,3000):d}".encode('ascii'))  # Cap value to 3000 max
         self.__state['timeout'] = value
         self.__conn.meta['timeout'] = value
 
@@ -719,7 +729,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         until it finds the device has set the SRQ bit.
         """
         while "waiting":
-            sleep_task = asyncio.create_task(asyncio.sleep(self.__wait_delay/1000))
+            sleep_task = asyncio.create_task(asyncio.sleep(self.__wait_delay))
 
             # Test if the SRQ line has been pulled low and if this was done by the instrument managed by this class.
             if await self.test_srq():
@@ -747,7 +757,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
             return
 
         if bool(mask & RqsMask.TIMO):
-            await asyncio.wait_for(self.__wait(), timeout=self.__state['timeout']/1000)
+            await asyncio.wait_for(self.__wait(), timeout=self.__conn.timeout)  # Wait for the GPIB + connection timeout
         else:
             await self.__wait()
 
@@ -831,23 +841,23 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         self.__state['device_mode'] = device_mode
         self.__conn.meta['device_mode'] = device_mode
 
-    def set_wait_delay(self, value: int) -> None:
+    def set_wait_delay(self, value: float) -> None:
         """
-        Set the number of ms to wait between serial polling the status byte, when waiting.
+        Set the number of seconds to wait between serial polling the status byte, when waiting.
 
         Parameters
         ----------
-        value: int
-            time in ms to wait between serial polling the status the device when waiting for state
-            changes. Minimum value: 100 ms, maximum value: the timeout set the GPIB device.
+        value: float
+            time in seconds to wait between serial polling the status the device when waiting for state
+            changes. Minimum value: 0.100 s, maximum value: the timeout set the GPIB device.
 
         See Also
         ----------
         wait : wait for an event
         """
-        assert 100 <= value <= self.__state['timeout']
+        assert 0.1 <= value <= self.__state['timeout']
 
-        self.__wait_delay = min(max(value, 100), self.__state['timeout'])
+        self.__wait_delay = min(max(value, 0.1), self.__state['timeout'])
 
 
 class AsyncPrologixGpibController(AsyncPrologixGpib):
@@ -859,7 +869,7 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
             conn: Union[AsyncSharedIPConnection, AsyncIPConnection],
             pad: int,
             sad: int = 0,
-            timeout: int = 3000,    # in ms
+            timeout: float = 3,    # in seconds
             send_eoi: bool = True,
             eos_mode: EosMode = EosMode.APPEND_NONE,
             wait_delay: int = 250  # in ms
@@ -873,8 +883,8 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
             primary address
         sad: int
             secondary address
-        timeout: int
-            timeout for operations in ms
+        timeout: float
+            timeout for GPIB operations in seconds
         send_eoi: bool
             assert EOI on write
         eos_mode: bool:
@@ -911,7 +921,7 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
 
 class AsyncPrologixGpibDevice(AsyncPrologixGpib):
     """
-    A Prologix GPIB evice with a custom connection object. It acts as a device on the GPIB bus.
+    A Prologix GPIB device with a custom connection object. It acts as a device on the GPIB bus.
     """
     def __init__(
             self,
@@ -943,7 +953,7 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
           pad=pad,
           sad=sad,
           device_mode=DeviceMode.DEVICE,
-          timeout=3000,  # in ms. This is the read timeout. A device does not read, so we leave it at the default
+          timeout=3,  # in seconds. This is the GPIB read timeout. A device does not read, so we leave it at the default
           send_eoi=send_eoi,
           eos_mode=eos_mode,
           wait_delay=wait_delay,
@@ -978,7 +988,7 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
     ) -> None:
         raise TypeError("Not supported in device mode")
 
-    async def timeout(self, value: int) -> None:
+    async def timeout(self, value: float) -> None:
         raise TypeError("Not supported in device mode")
 
     async def serial_poll(self, pad: int = 0, sad: int = 0) -> None:
@@ -1034,16 +1044,16 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpibController):
             pad: int,
             port: int = 1234,
             sad: int = 0,
-            timeout: int = 3000,    # in ms
+            timeout: float = 3,    # in seconds
             send_eoi: bool = True,
             eos_mode: EosMode = EosMode.APPEND_NONE,
-            ethernet_timeout: int = 1000,   # in ms
+            ethernet_timeout: float = 1,   # in seconds
             wait_delay: int = 250  # in ms
     ) -> None:  # pylint: disable=too-many-arguments
         conn = AsyncSharedIPConnection(
             hostname=hostname,
             port=port,
-            timeout=(timeout+ethernet_timeout)/1000  # in seconds
+            timeout=(timeout+ethernet_timeout)  # in seconds
         )
         super().__init__(
           conn=conn,
@@ -1089,13 +1099,13 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpibDevice):
             sad: int = 0,
             send_eoi: bool = True,
             eos_mode: EosMode = EosMode.APPEND_NONE,
-            ethernet_timeout: int = 1000,    # in ms
+            ethernet_timeout: float = 1,    # in seconds
             wait_delay: int = 250   # in ms
     ) -> None:   # pylint: disable=too-many-arguments
         conn = AsyncSharedIPConnection(
             hostname=hostname,
             port=port,
-            timeout=ethernet_timeout/1000   # in seconds
+            timeout=ethernet_timeout   # in seconds
         )
         super().__init__(
           conn=conn,
