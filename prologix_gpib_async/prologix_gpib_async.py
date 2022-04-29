@@ -102,7 +102,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
             timeout: float,
             send_eoi: bool,
             eos_mode: EosMode,
-            wait_delay: int
+            wait_delay: float
     ) -> None:   # pylint: disable=too-many-arguments
         """
         Parameters
@@ -121,7 +121,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
             assert EOI on write
         eos_mode: bool:
             end-of-string termination
-        wait_delay: int
+        wait_delay: float
             number of ms to wait in between serial polling a device when waiting
         """
         self.__conn = conn
@@ -872,7 +872,7 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
             timeout: float = 3,    # in seconds
             send_eoi: bool = True,
             eos_mode: EosMode = EosMode.APPEND_NONE,
-            wait_delay: int = 250  # in ms
+            wait_delay: float = 0.25  # in seconds
     ) -> None:  # pylint: disable=too-many-arguments
         """
         Parameters
@@ -889,7 +889,7 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
             assert EOI on write
         eos_mode: bool:
             end-of-string termination
-        wait_delay: int
+        wait_delay: float
             number of ms to wait in between serial polling a device when waiting
         """
         super().__init__(
@@ -930,7 +930,7 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
             sad: int = 0,
             send_eoi: bool = True,
             eos_mode: EosMode = EosMode.APPEND_NONE,
-            wait_delay: int = 250   # in ms
+            wait_delay: float = 0.25   # in seconds
     ) -> None:   # pylint: disable=too-many-arguments
         """
         Parameters
@@ -945,8 +945,8 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
             assert EOI on write
         eos_mode: bool:
             end-of-string termination
-        wait_delay: int
-            number of ms to wait in between serial polling a device when waiting
+        wait_delay: float
+            number of seconds to wait in between serial polling a device when waiting
         """
         super().__init__(
           conn=conn,
@@ -1009,7 +1009,7 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
     async def wait(self, mask: int) -> None:
         raise TypeError("Not supported in device mode")
 
-    def set_wait_delay(self, value: int) -> None:
+    def set_wait_delay(self, value: float) -> None:
         raise TypeError("Not supported in device mode")
 
 
