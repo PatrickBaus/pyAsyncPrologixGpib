@@ -279,7 +279,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         The underlying network protocol is a stream protocol, which does not know about the EOI of the GPIB bus. By
         default, a packet is terminated by a \n. If the device does not terminate its packets with either \r\n or \n,
         consider using an EOT character, if there is no way of knowing the number of bytes returned.
-        When using the "read after write" feature, force_poll can be set to False, when reding after sending a
+        When using the "read after write" feature, force_poll can be set to False, when reading after sending a
         command.
 
         Parameters
@@ -771,7 +771,8 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         bool
             True if the service request line is asserted
         """
-        return bool(int(await self.__query_command(b'++srq')))
+        async with self.__conn.meta['lock']:    # The lock is needed for the query to make sure no one else is reading
+            return bool(int(await self.__query_command(b'++srq')))
 
     async def reset(self) -> None:
         """
