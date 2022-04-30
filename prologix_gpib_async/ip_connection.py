@@ -114,7 +114,7 @@ class _AsyncIPConnectionPool:
                 del cls._connections[(hostname, port)]
 
 
-class AsyncIPConnection:
+class _AsyncIPConnection:
     """
     A basic IP connection. It handles reading, writing, connecting and disconnecting an IP connection
     in Python AsyncIO.
@@ -171,7 +171,6 @@ class AsyncIPConnection:
         self.__host = hostname, port
         self.__writer, self.__reader = None, None
         self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout
-        self.meta = {}    # Metadata can be used to store connection specific states
 
         self.__logger = logging.getLogger(__name__)
         self.__logger.setLevel(logging.WARNING)     # Only log really important messages
@@ -342,7 +341,7 @@ class AsyncIPConnection:
                 raise
 
 
-class _AsyncPooledIPConnection(AsyncIPConnection):
+class _AsyncPooledIPConnection(_AsyncIPConnection):
     """
     A pooled IP connection. It keeps track of the number connected clients. It will also make sure,
     that only the first client may connect to a host and the last client may disconnect.
@@ -357,6 +356,17 @@ class _AsyncPooledIPConnection(AsyncIPConnection):
         """
         return bool(self.__clients)
 
+    @property
+    def meta(self) -> dict[str, Any]:
+        """
+        A pooled connection can store shared metadata like the underlying hardware configuration state.
+        Returns
+        -------
+        dict
+            The dictionary with the metadata of the connection.
+        """
+        return self.__meta
+
     def __init__(self, hostname: str, port: int, timeout: Optional[float] = None) -> None:
         """
         Parameters
@@ -366,6 +376,7 @@ class _AsyncPooledIPConnection(AsyncIPConnection):
         """
         super().__init__(hostname=hostname, port=port, timeout=timeout)
         self.__clients = set()
+        self.__meta = {}
         self.__lock = asyncio.Lock()
 
     async def connect_client(self, client: "AsyncSharedIPConnection") -> None:
@@ -389,7 +400,7 @@ class _AsyncPooledIPConnection(AsyncIPConnection):
         # afterwards.
         try:
             async with self.__lock:
-                await super().connect()
+                await super().connect()  # The `connect()` call is free, if the connection is already connected
         except Exception:
             # If there is *any* error, remove the client from the list of connected clients
             self.__clients.remove(client)
@@ -410,10 +421,12 @@ class _AsyncPooledIPConnection(AsyncIPConnection):
         if client in self.__clients:
             try:
                 # If we are the last client connected, lock the connection and terminate it
+                # Double-checked locking is OK in asyncio, don't use it in threaded applications
                 if len(self.__clients) == 1:
                     # Lock the connection
                     async with self.__lock:
-                        await super().disconnect()
+                        if len(self.__clients) == 1:
+                            await super().disconnect()
             finally:
                 # Always remove the client, no matter what happened
                 self.__clients.remove(client)
@@ -421,8 +434,8 @@ class _AsyncPooledIPConnection(AsyncIPConnection):
 
 class AsyncSharedIPConnection:
     """
-    A connection from the _AsyncIPConnectionPool(). Use either an AsyncSharedIPConnection or
-    an AsyncIPConnection for connecting to a device.
+    A connection from the _AsyncIPConnectionPool(). Use of a connection pool is mandatory, since the devices only have
+    a single socket.
     """
     @property
     def hostname(self) -> str:

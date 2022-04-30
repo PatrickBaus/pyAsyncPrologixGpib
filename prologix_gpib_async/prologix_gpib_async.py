@@ -16,7 +16,7 @@ from enum import Enum, Flag, unique
 from itertools import zip_longest
 import re   # needed to escape characters in the byte stream
 
-from .ip_connection import AsyncIPConnection, AsyncSharedIPConnection
+from .ip_connection import AsyncSharedIPConnection
 
 
 @unique
@@ -70,7 +70,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
     The base class used by both the Prologix GPIB controller and GPIB device.
     """
     @property
-    def _conn(self) -> Union[AsyncSharedIPConnection, AsyncIPConnection]:
+    def _conn(self) -> AsyncSharedIPConnection:
         return self.__conn
 
     @property
@@ -95,7 +95,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
 
     def __init__(
             self,
-            conn: Union[AsyncSharedIPConnection, AsyncIPConnection],
+            conn: AsyncSharedIPConnection,
             pad: int,
             device_mode: DeviceMode,
             sad: int,
@@ -107,7 +107,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         """
         Parameters
         ----------
-        conn: AsyncSharedIPConnection or AsyncIPConnection
+        conn: AsyncSharedIPConnection
             either a connection from the pool or a standalone connection
         pad: int
             primary address
@@ -867,7 +867,7 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
     """
     def __init__(
             self,
-            conn: Union[AsyncSharedIPConnection, AsyncIPConnection],
+            conn: AsyncSharedIPConnection,
             pad: int,
             sad: int = 0,
             timeout: float = 3,    # in seconds
@@ -878,7 +878,7 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
         """
         Parameters
         ----------
-        conn: AsyncSharedIPConnection or AsyncIPConnection
+        conn: AsyncSharedIPConnection
             either a connection from the pool or a standalone connection
         pad: int
             primary address
@@ -936,7 +936,7 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
         """
         Parameters
         ----------
-        conn: AsyncSharedIPConnection or AsyncIPConnection
+        conn: AsyncSharedIPConnection
             either a connection from the pool or a standalone connection
         pad: int
             primary address
