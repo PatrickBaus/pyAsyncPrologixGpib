@@ -23,6 +23,7 @@ import asyncio
 # Devices
 from prologix_gpib_async import AsyncPrologixGpibEthernetController
 
+
 async def main():
     try:
         # The primary address (e.g. 22) can be anything in range(1,31).There is no device connection required for this example
@@ -33,4 +34,3 @@ async def main():
         print("Could not connect to remote target. Is the device connected?")
 
 asyncio.run(main())
-

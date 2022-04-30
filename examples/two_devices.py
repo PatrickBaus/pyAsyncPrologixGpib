@@ -19,20 +19,17 @@
 # ##### END GPL LICENSE BLOCK #####
 
 import asyncio
-from contextlib import AsyncExitStack
 
 # Devices
-from pyAsyncPrologixGpib import AsyncPrologixGpibEthernetController
+from prologix_gpib_async import AsyncPrologixGpibEthernetController
 
 ip_address = "localhost"
 
+
 async def main():
-    try: 
-        async with AsyncExitStack() as stack:
-            gpib_device1, gpib_device2 = await asyncio.gather(
-                stack.enter_async_context(AsyncPrologixGpibEthernetController(ip_address, pad=22))
-                stack.enter_async_context(AsyncPrologixGpibEthernetController(ip_address, pad=10))
-            )
+    try:
+        async with AsyncPrologixGpibEthernetController(ip_address, pad=22) as gpib_device1,\
+                AsyncPrologixGpibEthernetController(ip_address, pad=10) as gpib_device2:
             await gpib_device1.write(b'*IDN?')    # Automatically changes address to device 22
             print(await gpib_device1.read())
             await gpib_device2.write(b'*IDN?')    # Automatically changes address to device 10
@@ -41,4 +38,3 @@ async def main():
         print("Could not connect to remote target. Is the device connected?")
 
 asyncio.run(main())
-
