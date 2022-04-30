@@ -122,7 +122,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         eos_mode: bool:
             end-of-string termination
         wait_delay: float
-            number of ms to wait in between serial polling a device when waiting
+            number of ms to wait in between serial polling a device when waiting.
         """
         self.__conn = conn
         self.__state = {
@@ -1049,7 +1049,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpibController):
             send_eoi: bool = True,
             eos_mode: EosMode = EosMode.APPEND_NONE,
             ethernet_timeout: float = 1,   # in seconds
-            wait_delay: int = 250  # in ms
+            wait_delay: float = 0.25  # in s seconds
     ) -> None:  # pylint: disable=too-many-arguments
         conn = AsyncSharedIPConnection(
             hostname=hostname,
@@ -1101,7 +1101,7 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpibDevice):
             send_eoi: bool = True,
             eos_mode: EosMode = EosMode.APPEND_NONE,
             ethernet_timeout: float = 1,    # in seconds
-            wait_delay: int = 250   # in ms
+            wait_delay: float = 0.25   # in seconds
     ) -> None:   # pylint: disable=too-many-arguments
         conn = AsyncSharedIPConnection(
             hostname=hostname,
