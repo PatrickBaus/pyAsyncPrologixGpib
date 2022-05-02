@@ -55,6 +55,7 @@ async def cancel_tasks(tasks: set[Task]) -> None:
                 task.cancel()
         results = await asyncio.gather(*tasks, return_exceptions=True)
         for result in results:
+            # Check for exceptions, but ignore asyncio.CancelledError, which inherits from BaseException not Exception
             if isinstance(result, Exception):
                 raise result
     except Exception:  # pylint: disable=broad-except
@@ -91,13 +92,21 @@ async def data_producer(gpib_device: AsyncPrologixGpibEthernetController, output
         await asyncio.sleep(interval - time.monotonic() + start_of_query)
 
 
-async def data_consumer(mqtt_client: asyncio_mqtt.Client, input_queue: asyncio.Queue[Decimal]) -> None:
+async def data_consumer(
+        mqtt_client: asyncio_mqtt.Client,
+        input_queue: asyncio.Queue[Decimal],
+        reconnect_interval: float
+) -> None:
     """
     The consumer will read the data from the queue, encode it to JSON and push it to an MQTT topic.
     Parameters
     ----------
-    mqtt_client
-    input_queue
+    mqtt_client: asyncio_mqtt.Client
+        The client, that is connected to an MQTT server
+    input_queue: asyncio.Queue
+        The data queue
+    reconnect_interval: float
+        The number of seconds to wait between reconnection attempts
     """
     while "loop not cancelled":
         value = await input_queue.get()
@@ -111,6 +120,9 @@ async def data_consumer(mqtt_client: asyncio_mqtt.Client, input_queue: asyncio.Q
             # Typically sensors return data as decimals or ints to preserve the precision
             payload = json.dumps(payload, use_decimal=True)
             await mqtt_client.publish(MQTT_TOPIC, payload=payload, qos=2)
+        except asyncio_mqtt.error.MqttError as exc:
+            print(f"MQTT error: {exc}. Retrying.")
+            await asyncio.sleep(reconnect_interval)
         finally:
             input_queue.task_done()
 
@@ -120,19 +132,19 @@ async def main() -> None:
     The main worker. It spawns the child workers for gathering the data and pushing it to the MQTT topic.
     """
     try:
-        stack = AsyncExitStack()
-        tasks: set[Task] = set()
-        data_queue = asyncio.Queue()
-        stack.push_async_callback(cancel_tasks, tasks)
+        async with AsyncExitStack() as stack:
+            tasks: set[Task] = set()
+            data_queue = asyncio.Queue()
+            stack.push_async_callback(cancel_tasks, tasks)
 
-        gpib_device = await stack.enter_async_context(AsyncPrologixGpibEthernetController(DEVICE_IP, pad=3))
-        task = asyncio.create_task(data_producer(gpib_device, output_queue=data_queue))
-        tasks.add(task)
-        mqtt_client = await stack.enter_async_context(asyncio_mqtt.Client(hostname=MQTT_HOST))
-        task = asyncio.create_task(data_consumer(mqtt_client, input_queue=data_queue))
-        tasks.add(task)
+            gpib_device = await stack.enter_async_context(AsyncPrologixGpibEthernetController(DEVICE_IP, pad=3))
+            task = asyncio.create_task(data_producer(gpib_device, output_queue=data_queue))
+            tasks.add(task)
+            mqtt_client = await stack.enter_async_context(asyncio_mqtt.Client(hostname=MQTT_HOST))
+            task = asyncio.create_task(data_consumer(mqtt_client, input_queue=data_queue, reconnect_interval=3))
+            tasks.add(task)
 
-        await asyncio.gather(*tasks)
+            await asyncio.gather(*tasks)
     except (ConnectionError, ConnectionRefusedError):
         print("Could not connect to remote target. Is the device connected?")
 
