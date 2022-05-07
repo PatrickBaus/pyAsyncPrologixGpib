@@ -651,7 +651,8 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
     ) -> None:
         """
         Trigger the selected instrument, or if specified a list of devices.
-        The list of devices can either be a list (or tuple) of pads or a list/tuple of lists/tuples of pads and sads.
+        The list of devices can either be a list (or tuple) of primary addresses or a list/tuple of lists/tuples of
+        primary and secondary addresses.
         Mixing is allowed as well.
         Examples: devices=(22,10) will trigger pad 22 and 10
                   devices=((22,96),10) will trigger (pad 22, sad 96) and pad 10
@@ -804,7 +805,8 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         bool
             True if the config is automatically saved to the EEPROM
         """
-        return bool(int(await self.__query_command(b'++savecfg')))
+        async with self.__conn.meta['lock']:  # The lock is needed for the query to make sure no one else is reading
+            return bool(int(await self.__query_command(b'++savecfg')))
 
     async def set_listen_only(self, enable: bool) -> None:
         """
@@ -825,7 +827,8 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         bool
             True if the controller is in listen-only mode.
         """
-        return bool(int(await self.__query_command(b'++lon')))
+        async with self.__conn.meta['lock']:  # The lock is needed for the query to make sure no one else is reading
+            return bool(int(await self.__query_command(b'++lon')))
 
     async def __set_device_mode(self, device_mode: DeviceMode) -> None:
         """
@@ -908,15 +911,27 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
         return f"Prologix GPIB Controller of device ({self.pad},{self.sad}) at {self._conn}"
 
     async def set_listen_only(self, enable: bool) -> None:
+        """
+        Not available in controller mode.
+        """
         raise TypeError("Not supported in controller mode")
 
     async def get_listen_only(self) -> None:
+        """
+        Not available in controller mode.
+        """
         raise TypeError("Not supported in controller mode")
 
     async def set_status(self, value: int) -> None:
+        """
+        Not available in controller mode.
+        """
         raise TypeError("Not supported in controller mode")
 
     async def get_status(self) -> None:
+        """
+        Not available in controller mode.
+        """
         raise TypeError("Not supported in controller mode")
 
 
@@ -964,21 +979,39 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
         return f"Prologix GPIB device ({self.pad},{self.sad}) at {self._conn}"
 
     async def set_read_after_write(self, enable: bool) -> None:
+        """
+        Not available in device mode.
+        """
         raise TypeError("Not supported in device mode")
 
     async def get_read_after_write(self) -> None:
+        """
+        Not available in device mode.
+        """
         raise TypeError("Not supported in device mode")
 
     async def clear(self) -> None:
+        """
+        Not available in device mode.
+        """
         raise TypeError("Not supported in device mode")
 
     async def interface_clear(self) -> None:
+        """
+        Not available in device mode.
+        """
         raise TypeError("Not supported in device mode")
 
     async def remote_enable(self, enable: bool = True) -> None:
+        """
+        Not available in device mode.
+        """
         raise TypeError("Not supported in device mode")
 
     async def ibloc(self) -> None:
+        """
+        Not available in device mode.
+        """
         raise TypeError("Not supported in device mode")
 
     async def read(
@@ -987,15 +1020,27 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
             character: Optional[bytes] = None,
             force_poll: bool = True
     ) -> None:
+        """
+        Not available in device mode.
+        """
         raise TypeError("Not supported in device mode")
 
     async def timeout(self, value: float) -> None:
+        """
+        Not available in device mode.
+        """
         raise TypeError("Not supported in device mode")
 
     async def serial_poll(self, pad: int = 0, sad: int = 0) -> None:
+        """
+        Not available in device mode.
+        """
         raise TypeError("Not supported in device mode")
 
     async def test_srq(self) -> None:
+        """
+        Not available in device mode.
+        """
         raise TypeError("Not supported in device mode")
 
     async def trigger(
@@ -1005,12 +1050,21 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
                 list[Union[int, tuple[int, int], list[int]]]
             ] = ()
     ) -> None:
+        """
+        Not available in device mode.
+        """
         raise TypeError("Not supported in device mode")
 
     async def wait(self, mask: int) -> None:
+        """
+        Not available in device mode.
+        """
         raise TypeError("Not supported in device mode")
 
     def set_wait_delay(self, value: float) -> None:
+        """
+        Not available in device mode.
+        """
         raise TypeError("Not supported in device mode")
 
 
