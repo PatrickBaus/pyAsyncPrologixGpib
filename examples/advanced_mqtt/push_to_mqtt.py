@@ -19,7 +19,8 @@
 # ##### END GPL LICENSE BLOCK #####
 """
 This is an example for a very simple data logger, that reads data from a GPIB device and pushes it to an MQTT topic.
-There is no error checking or reconnection done. This is left as an exercise to the user.
+The device used for this example is a standard SCPI capable HP53131A universal counter and the data read is a frequency.
+There is only little error checking or handling. This is left as an exercise to the user.
 """
 from __future__ import annotations
 
@@ -56,6 +57,7 @@ async def data_producer(output_queue: asyncio.Queue[Decimal], reconnect_interval
     while "loop not cancelled":
         try:
             async with AsyncPrologixGpibEthernetController(DEVICE_IP, pad=GPIB_PAD) as gpib_device:
+                print(f"Connected to {gpib_device}")
                 # Run the initial config
                 interval = 10   # Read data at `interval` seconds
                 await gpib_device.write(b'*RST')
@@ -72,12 +74,13 @@ async def data_producer(output_queue: asyncio.Queue[Decimal], reconnect_interval
                     value = await gpib_device.read()
                     value = Decimal(value[:-1].decode("utf8"))
                     output_queue.put_nowait(value)
+                    print(f"Read: {value} Hz")
                     await asyncio.sleep(interval - time.monotonic() + start_of_query)
         except asyncio.TimeoutError:
             print("Timeout received. Restarting")
             await asyncio.sleep(reconnect_interval)
-        except (ConnectionError, ConnectionRefusedError):
-            print("Could not connect to remote target. Is the device connected?")
+        except (ConnectionError, ConnectionRefusedError) as exc:
+            print(f"Could not connect to remote target ({exc}). Is the device connected?")
             await asyncio.sleep(reconnect_interval)
 
 
