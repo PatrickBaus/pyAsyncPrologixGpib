@@ -499,7 +499,7 @@ class AsyncSharedIPConnection:
         await self.disconnect()
 
     def __str__(self) -> str:
-        return f"Shared IP connection to {self.hostname}:{self.port}"
+        return f"shared IP connection to {self.hostname}:{self.port}"
 
     async def connect(self) -> None:
         """

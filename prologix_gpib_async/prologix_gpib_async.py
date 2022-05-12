@@ -926,7 +926,7 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
         )
 
     def __str__(self) -> str:
-        return f"Prologix GPIB Controller of device ({self.pad},{self.sad}) at {self._conn}"
+        return f"Prologix GPIB controller of device ({self.pad},{self.sad}) at {self._conn}"
 
     async def set_listen_only(self, enable: bool) -> None:
         """
