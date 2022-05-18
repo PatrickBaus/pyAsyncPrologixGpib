@@ -662,24 +662,24 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         """
         assert len(devices) <= 15
 
-        if len(devices) == 0:
-            async with self.__conn.meta['lock']:
-                # No need to call __ensure_state(), as we will trigger the device by its address
+        async with self.__conn.meta['lock']:
+            # No need to call __ensure_state(), as we will trigger the device by its address
+            if len(devices) == 0:
                 command = b'++trg ' + bytes(str(self.__state['pad']), 'ascii')
                 if self.__state['sad'] != 0:
                     command += b' ' + bytes(str(self.__state['sad']), 'ascii')
                 await self.__write(command)
-        else:
-            command = b'++trg'
-            for device in devices:
-                if isinstance(device, (list, tuple)):
-                    pad, sad = device
-                    assert (0 <= pad <= 30) and (sad == 0 or (0x60 <= sad <= 0x7E))
-                    command += b' ' + bytes(str(int(pad)), 'ascii') + b' ' + bytes(str(int(sad)), 'ascii')
-                else:
-                    assert 0 <= device <= 30
-                    command += b' ' + bytes(str(int(device)), 'ascii')
-            await self.__write(command)
+            else:
+                command = b'++trg'
+                for device in devices:
+                    if isinstance(device, (list, tuple)):
+                        pad, sad = device
+                        assert (0 <= pad <= 30) and (sad == 0 or (0x60 <= sad <= 0x7E))
+                        command += b' ' + bytes(str(int(pad)), 'ascii') + b' ' + bytes(str(int(sad)), 'ascii')
+                    else:
+                        assert 0 <= device <= 30
+                        command += b' ' + bytes(str(int(device)), 'ascii')
+                await self.__write(command)
 
     async def version(self) -> str:
         """
@@ -711,16 +711,15 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         """
         assert (0 <= pad <= 30) and (sad == 0 or (0x60 <= sad <= 0x7E))
 
-        command = b'++spoll'
-        if pad != 0:
-            # if pad (and sad) are given, we do not need to enforce the current state
-            command += b' ' + bytes(str(int(pad)), 'ascii')
-            if sad != 0:
-                command += b' ' + bytes(str(int(sad)), 'ascii')
-            async with self.__conn.meta['lock']:
-                return int(await self.__query_command(command))
-        else:
-            async with self.__conn.meta['lock']:
+        async with self.__conn.meta['lock']:
+            command = b'++spoll'
+            if pad != 0:
+                # if pad (and sad) are given, we do not need to enforce the current state
+                command += b' ' + bytes(str(int(pad)), 'ascii')
+                if sad != 0:
+                    command += b' ' + bytes(str(int(sad)), 'ascii')
+                    return int(await self.__query_command(command))
+            else:
                 await self.__ensure_state()
                 return int(await self.__query_command(command))
 
