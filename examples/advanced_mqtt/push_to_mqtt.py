@@ -29,6 +29,7 @@ import time
 from asyncio import Task
 
 from decimal import Decimal
+from random import uniform
 from uuid import UUID
 
 import simplejson as json
@@ -40,7 +41,20 @@ GPIB_PAD = 3    # The GPIB address of the device
 MQTT_HOST = "localhost"
 MQTT_TOPIC = "sensors/room_1/frequency/device_1"    # The topic, where the data is to be published
 # The device id is used to uniquely identify the device on the sensor network
+# Generate a new UUID by calling UUID()
 DEVICE_UUID = UUID('7fc6e6e5-bf24-4c45-a881-d69d299a5b69')
+
+# The initial commands sent to the device after connecting
+INIT_COMMANDS = [
+    b"*RST",
+    b":INP1:COUP AC",
+    b":INP1:COUP AC",
+    b":INP1:IMP 50",
+    b":FREQ:ARM:STOP:SOUR DIG",
+    b":FREQ:ARM:STOP:DIG 8",
+    b":INIT:CONT ON"
+]
+READ_INTERVAL = 10  # in seconds
 
 
 async def data_producer(output_queue: asyncio.Queue[Decimal], reconnect_interval: float) -> None:
@@ -54,34 +68,37 @@ async def data_producer(output_queue: asyncio.Queue[Decimal], reconnect_interval
     reconnect_interval: float
         The number of seconds to wait between reconnection attempts
     """
+    jittered_reconnect_interval = reconnect_interval
     while "loop not cancelled":
         try:
+            # Add some jitter to the reconnect-interval to prevent the controller from flooding the source
+            jittered_reconnect_interval = uniform(reconnect_interval,
+                                                  min(20 * reconnect_interval, jittered_reconnect_interval * 3))
             async with AsyncPrologixGpibEthernetController(DEVICE_IP, pad=GPIB_PAD) as gpib_device:
                 print(f"Connected to {gpib_device}")
-                # Run the initial config
-                interval = 10   # Read data at `interval` seconds
-                await gpib_device.write(b'*RST')
-                await gpib_device.write(b':INP1:COUP AC')
-                await gpib_device.write(b':INP1:IMP 50')
-                await gpib_device.write(b':FREQ:ARM:STOP:SOUR DIG')
-                await gpib_device.write(b':FREQ:ARM:STOP:DIG 8')
-                await gpib_device.write(b':INIT:CONT ON')
+                # Run the initial commands
+                coros = [gpib_device.write(cmd) for cmd in INIT_COMMANDS]
+                await asyncio.gather(*coros)
                 # Then start reading the data
                 while "Connected":
                     start_of_query = time.monotonic()
                     await gpib_device.write(b':ABORt')
                     await gpib_device.write(b':FETCh?')
                     value = await gpib_device.read()
+                    # Convert to decimal instead of float to keep the precision
                     value = Decimal(value[:-1].decode("utf8"))
-                    output_queue.put_nowait(value)
+                    #output_queue.put_nowait(value)
                     print(f"Read: {value} Hz")
-                    await asyncio.sleep(interval - time.monotonic() + start_of_query)
+                    await asyncio.sleep(READ_INTERVAL - time.monotonic() + start_of_query)
         except asyncio.TimeoutError:
-            print("Timeout received. Restarting")
-            await asyncio.sleep(reconnect_interval)
+            print(f"Timeout received. Restarting in {jittered_reconnect_interval:g} s")
+            await asyncio.sleep(jittered_reconnect_interval)
         except (ConnectionError, ConnectionRefusedError) as exc:
-            print(f"Could not connect to remote target ({exc}). Is the device connected?")
-            await asyncio.sleep(reconnect_interval)
+            print(
+                f"Could not connect to remote target ({exc}). Is the device connected? Restarting in "
+                f"{jittered_reconnect_interval:g} s"
+            )
+            await asyncio.sleep(jittered_reconnect_interval)
 
 
 async def data_consumer(
