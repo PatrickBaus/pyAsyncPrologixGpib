@@ -400,10 +400,13 @@ class _AsyncPooledIPConnection(_AsyncIPConnection):
         # afterwards.
         try:
             async with self.__lock:
+                # Add the client again, because the lock might have been due to a pending disconnect, which would remove
+                # us from the set
+                self.__clients.add(client)
                 await super().connect()  # The `connect()` call is free, if the connection is already connected
         except Exception:
             # If there is *any* error, remove the client from the list of connected clients
-            self.__clients.remove(client)
+            self.__clients.discard(client)
             # then pass on the error
             raise
 
@@ -429,7 +432,8 @@ class _AsyncPooledIPConnection(_AsyncIPConnection):
                             await super().disconnect()
             finally:
                 # Always remove the client, no matter what happened
-                self.__clients.remove(client)
+                # Discard the client as it *might* not be in the set if there was an error during connect
+                self.__clients.discard(client)
 
 
 class AsyncSharedIPConnection:
