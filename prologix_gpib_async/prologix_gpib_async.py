@@ -718,10 +718,10 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
                 command += b' ' + bytes(str(int(pad)), 'ascii')
                 if sad != 0:
                     command += b' ' + bytes(str(int(sad)), 'ascii')
-                    return int(await self.__query_command(command))
             else:
                 await self.__ensure_state()
-                return int(await self.__query_command(command))
+
+            return int(await self.__query_command(command))
 
     async def __wait(self) -> int:
         """
