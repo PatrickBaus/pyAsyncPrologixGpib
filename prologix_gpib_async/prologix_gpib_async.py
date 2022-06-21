@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import asyncio
 from types import TracebackType
-from typing import Optional, Type, Union
+from typing import Type
 try:
     from typing import Self  # Python >=3.11
 except ImportError:
@@ -147,9 +147,9 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
 
     async def __aexit__(
             self,
-            exc_type: Optional[Type[BaseException]],
-            exc: Optional[BaseException],
-            traceback: Optional[TracebackType]
+            exc_type: Type[BaseException] | None,
+            exc: BaseException | None,
+            traceback: TracebackType | None
     ) -> None:
         await self.disconnect()
 
@@ -269,8 +269,8 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
 
     async def read(
             self,
-            length: Optional[int] = None,
-            character: Optional[bytes] = None,
+            length: int | None = None,
+            character: bytes | None = None,
             force_poll: bool = True
     ) -> bytes:
         """
@@ -644,10 +644,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
 
     async def trigger(
             self,
-            devices: Union[
-                tuple[Union[int, tuple[int, int], list[int]], ...],
-                list[Union[int, tuple[int, int], list[int]]]
-            ] = ()
+            devices: tuple[int | tuple[int, int] | list[int], ...] | list[int | tuple[int, int] | list[int]] = ()
     ) -> None:
         """
         Trigger the selected instrument, or if specified a list of devices.
@@ -1033,8 +1030,8 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
 
     async def read(
             self,
-            length: Optional[int] = None,
-            character: Optional[bytes] = None,
+            length: int | None = None,
+            character: bytes | None = None,
             force_poll: bool = True
     ) -> None:
         """
@@ -1062,10 +1059,7 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
 
     async def trigger(
             self,
-            devices: Union[
-                tuple[Union[int, tuple[int, int], list[int]], ...],
-                list[Union[int, tuple[int, int], list[int]]]
-            ] = ()
+            devices: tuple[int | tuple[int, int] | list[int], ...] | list[int | tuple[int, int] | list[int]] = ()
     ) -> None:
         """
         Not available in device mode.

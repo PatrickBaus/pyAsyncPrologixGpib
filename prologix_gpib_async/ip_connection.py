@@ -10,7 +10,7 @@ import asyncio
 import errno    # The error numbers can be found in /usr/include/asm-generic/errno.h
 import logging
 from types import TracebackType
-from typing import Any, Optional, Type
+from typing import Any, Type
 try:
     from typing import Self  # Python >=3.11
 except ImportError:
@@ -161,7 +161,7 @@ class _AsyncIPConnection:
         """
         return self.__writer is not None and not self.__writer.is_closing()
 
-    def __init__(self, hostname: Optional[str] = None, port: int = 1234, timeout: Optional[float] = None) -> None:
+    def __init__(self, hostname: str | None = None, port: int = 1234, timeout: float | None = None) -> None:
         """
         Parameters
         ----------
@@ -182,9 +182,9 @@ class _AsyncIPConnection:
 
     async def __aexit__(
             self,
-            exc_type: Optional[Type[BaseException]],
-            exc: Optional[BaseException],
-            traceback: Optional[TracebackType]
+            exc_type: Type[BaseException] | None,
+            exc: BaseException | None,
+            traceback: TracebackType | None
     ) -> None:
         await self.disconnect()
 
@@ -221,7 +221,7 @@ class _AsyncIPConnection:
                 f"Prologix IP connection error. Connection lost to host '{self.__host[0]}:{self.__host[1]}'."
             ) from None
 
-    async def read(self, length: Optional[int] = None, eol_character: Optional[bytes] = None) -> bytes:
+    async def read(self, length: int | None = None, eol_character: bytes | None = None) -> bytes:
         """
         Read either a fixed number of bytes or until the eol_character has been found. If length is
         set, we will read a fixed number of bytes.
@@ -277,7 +277,7 @@ class _AsyncIPConnection:
             else:
                 raise NotConnectedError('Prologix IP connection not connected')
 
-    async def connect(self, hostname: Optional[str] = None, port: Optional[int] = None) -> None:
+    async def connect(self, hostname: str | None = None, port: int | None = None) -> None:
         """
         Connect to the host. If a connection is already established, connect() will return without
         delay.
@@ -367,7 +367,7 @@ class _AsyncPooledIPConnection(_AsyncIPConnection):
         """
         return self.__meta
 
-    def __init__(self, hostname: str, port: int, timeout: Optional[float] = None) -> None:
+    def __init__(self, hostname: str, port: int, timeout: float | None = None) -> None:
         """
         Parameters
         ----------
@@ -484,11 +484,11 @@ class AsyncSharedIPConnection:
         """
         return self.__timeout
 
-    def __init__(self, hostname: str, port: int = 1234, timeout: Optional[float] = None):
+    def __init__(self, hostname: str, port: int = 1234, timeout: float | None = None):
         self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout
         self.__hostname = hostname
         self.__port = port
-        self.__conn: Optional[_AsyncPooledIPConnection] = None
+        self.__conn: _AsyncPooledIPConnection | None = None
 
     async def __aenter__(self) -> Self:
         await self.connect()
@@ -496,9 +496,9 @@ class AsyncSharedIPConnection:
 
     async def __aexit__(
             self,
-            exc_type: Optional[Type[BaseException]],
-            exc: Optional[BaseException],
-            traceback: Optional[TracebackType]
+            exc_type: Type[BaseException] | None,
+            exc: BaseException | None,
+            traceback: TracebackType | None
     ) -> None:
         await self.disconnect()
 
@@ -544,7 +544,7 @@ class AsyncSharedIPConnection:
             raise NotConnectedError('Prologix IP connection not connected')
         await self.__conn.write(data)
 
-    async def read(self, length: Optional[int] = None, eol_character: Optional[bytes] = None) -> bytes:
+    async def read(self, length: int | None = None, eol_character: bytes | None = None) -> bytes:
         """
         Reads from the underlying connection. Throws a NotConnectedError() if the connection is not
         connected.
