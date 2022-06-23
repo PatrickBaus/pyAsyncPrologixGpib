@@ -119,8 +119,6 @@ class _AsyncIPConnection:
     A basic IP connection. It handles reading, writing, connecting and disconnecting an IP connection
     in Python AsyncIO.
     """
-    SEPARATOR = b'\n'
-
     @property
     def hostname(self) -> str:
         """
@@ -169,6 +167,8 @@ class _AsyncIPConnection:
             timeout of all operation in seconds. Use DEFAULT_WAIT_TIMEOUT if None is set
         """
         self.__host = hostname, port
+        self.__writer: asyncio.StreamWriter | None
+        self.__reader: asyncio.StreamReader | None
         self.__writer, self.__reader = None, None
         self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout
 
@@ -231,7 +231,7 @@ class _AsyncIPConnection:
         length: int, default=None
             number of bytes to be read if not None
         eol_character: bytes, default=None
-            eol character to terminate the read if length is None. If None, the default SEPARATOR is used.
+            eol character to terminate the read if length is None.
 
         Returns
         ----------
@@ -245,7 +245,6 @@ class _AsyncIPConnection:
             if self.is_connected:   # We need to check again, because the connection might have closed by now
                 try:
                     if length is None:
-                        eol_character = self.SEPARATOR if eol_character is None else eol_character
                         coro = self.__reader.readuntil(eol_character)
                     else:
                         coro = self.__reader.readexactly(length)

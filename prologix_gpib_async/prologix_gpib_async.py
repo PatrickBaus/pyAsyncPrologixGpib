@@ -69,6 +69,8 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
     """
     The base class used by both the Prologix GPIB controller and GPIB device.
     """
+    _SEPARATOR = b'\n'   # The default separator typically used by GPIB devices
+
     @property
     def _conn(self) -> AsyncSharedIPConnection:
         return self.__conn
@@ -306,7 +308,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
 
             return await self.__conn.read(
                 length=length,
-                eol_character=self.__state['eot_char'] if self.__state['send_eot'] else None
+                eol_character=self.__state['eot_char'] if self.__state['send_eot'] else self._SEPARATOR
             )
 
     async def get_device_mode(self) -> DeviceMode:
