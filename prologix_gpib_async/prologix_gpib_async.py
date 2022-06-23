@@ -889,7 +889,7 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
             conn: AsyncSharedIPConnection,
             pad: int,
             sad: int = 0,
-            timeout: float = 3,    # in seconds
+            timeout: float = 10,    # in seconds
             send_eoi: bool = True,
             eos_mode: EosMode = EosMode.APPEND_NONE,
             wait_delay: float = 0.25  # in seconds
@@ -903,8 +903,8 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
             Primary address
         sad: int
             Secondary address
-        timeout: float
-            Timeout for GPIB operations in seconds
+        timeout: float, default = 10
+            Timeout for GPIB operations in seconds. The default is the same as used by linux-gpib.
         send_eoi: bool
             Assert EOI on write
         eos_mode: bool:
