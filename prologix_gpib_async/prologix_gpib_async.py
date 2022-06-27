@@ -103,8 +103,8 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
             sad: int,
             timeout: float,
             send_eoi: bool,
+            wait_delay: float,
             eos_mode: EosMode,
-            wait_delay: float
     ) -> None:   # pylint: disable=too-many-arguments
         """
         Parameters
@@ -128,15 +128,15 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         """
         self.__conn = conn
         self.__state = {
-          'pad': pad,
-          'sad': sad,
-          'send_eoi': bool(int(send_eoi)),
-          'send_eot': False,
-          'eot_char': "\n",
-          'eos_mode': EosMode(eos_mode),
-          'timeout': timeout,
-          'read_after_write': False,
-          'device_mode': device_mode,
+            'pad': pad,
+            'sad': sad,
+            'send_eoi': bool(int(send_eoi)),
+            'send_eot': False,
+            'eot_char': "\n",
+            'eos_mode': EosMode(eos_mode),
+            'timeout': timeout,
+            'read_after_write': False,
+            'device_mode': device_mode,
         }
         self.set_wait_delay(wait_delay)
 
