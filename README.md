@@ -31,6 +31,7 @@ from prologix_gpib_async import AsyncPrologixGpibEthernetController
 # Create a controller and talk to device address 22
 async with AsyncPrologixGpibEthernetController("127.0.0.1", pad=22) as gpib_device:
     # Add your code here
+    ...
 ```
 
 Sending a "my command" command to address 22 (as set up previously)
