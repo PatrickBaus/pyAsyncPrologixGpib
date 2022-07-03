@@ -16,7 +16,7 @@ Tested using Linux, should work for Mac OSX, Windows and any OS with Python supp
 To install the library in a virtual environment (always use venvs with every project):
 
 ```bash
-virtualenv env  # virtual environment, optional
+python3 -m venv env  # virtual environment, optional
 source env/bin/activate
 pip install prologix_gpib_async
 ```
