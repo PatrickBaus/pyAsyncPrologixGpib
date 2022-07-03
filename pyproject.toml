@@ -1,10 +1,3 @@
-[build-system]
-requires = [
-    "setuptools>=61.0",
-    "typing-extensions; python_version <'3.11'",
-]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "prologix_gpib_async"
 authors = [
@@ -20,15 +13,20 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Development Status :: 5 - Production/Stable",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
     "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
     "Natural Language :: English",
     "Topic :: Home Automation",
+    "Topic :: Scientific/Engineering",
 ]
 keywords = ["Prologix", "GPIB", "API"]
-
 dynamic = ["version"]
+dependencies = [
+    "typing-extensions; python_version <'3.11'",
+]
 
 [tool.setuptools.dynamic]
 version = {attr = "prologix_gpib_async.__version__"}
@@ -36,6 +34,20 @@ version = {attr = "prologix_gpib_async.__version__"}
 [project.urls]
 "Homepage" = "https://github.com/PatrickBaus/pyAsyncPrologixGpib"
 "Bug Tracker" = "https://github.com/PatrickBaus/pyAsyncPrologixGpib/issues"
+"Download" = "https://github.com/PatrickBaus/pyAsyncPrologixGpib/releases"
 
 [project.optional-dependencies]
-dev = ["pylint", ]
+dev = [
+    "pylint", "twine", ]
+
+test = [
+    "pylint",
+]
+
+[build-system]
+requires = [
+    "setuptools>=61.0",
+    "typing-extensions; python_version <'3.11'",
+    "pylint"
+]
+build-backend = "setuptools.build_meta"
