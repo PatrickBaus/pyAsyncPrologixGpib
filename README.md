@@ -18,7 +18,7 @@ To install the library in a virtual environment (always use venvs with every pro
 ```bash
 virtualenv env  # virtual environment, optional
 source env/bin/activate
-pip install -e git+https://github.com/PatrickBaus/pyAsyncPrologixGpib#egg=prologix_gpib_async
+pip install prologix_gpib_async
 ```
 
 ## Usage

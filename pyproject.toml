@@ -5,7 +5,7 @@ authors = [
 ]
 description = "A Python AsyncIO library for the Prologix GPIB (Ethernet) adapter"
 readme = "README.md"
-license = { file="LICENSE" }
+license = { text="GNU General Public License v3 (GPLv3)" }
 requires-python = ">=3.7"
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -28,9 +28,6 @@ dependencies = [
     "typing-extensions; python_version <'3.11'",
 ]
 
-[tool.setuptools.dynamic]
-version = {attr = "prologix_gpib_async.__version__"}
-
 [project.urls]
 "Homepage" = "https://github.com/PatrickBaus/pyAsyncPrologixGpib"
 "Bug Tracker" = "https://github.com/PatrickBaus/pyAsyncPrologixGpib/issues"
@@ -51,3 +48,6 @@ requires = [
     "pylint"
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = {attr = "prologix_gpib_async.__version__"}
