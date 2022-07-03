@@ -35,7 +35,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pylint", "twine", ]
+    "build", "pylint", "twine"
+]
 
 test = [
     "pylint",
@@ -45,7 +46,6 @@ test = [
 requires = [
     "setuptools>=61.0",
     "typing-extensions; python_version <'3.11'",
-    "pylint"
 ]
 build-backend = "setuptools.build_meta"
 
