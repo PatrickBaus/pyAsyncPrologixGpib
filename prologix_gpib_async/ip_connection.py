@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 This module provides the two classes AsyncIPConnection() and AsyncSharedIPConnection(). The shared
 version uses a connection pool to reduce the number of individual connections made to the host. This
