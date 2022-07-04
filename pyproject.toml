@@ -39,7 +39,7 @@ dev = [
 ]
 
 test = [
-    "pylint",
+    "mypy", "pylint",
 ]
 
 [build-system]

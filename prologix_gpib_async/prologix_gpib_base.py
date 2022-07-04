@@ -59,7 +59,7 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
         """
         raise TypeError("Not supported in controller mode")
 
-    async def get_listen_only(self) -> None:
+    async def get_listen_only(self) -> bool:
         """
         Not available in controller mode.
         """
@@ -71,7 +71,7 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
         """
         raise TypeError("Not supported in controller mode")
 
-    async def get_status(self) -> None:
+    async def get_status(self) -> int:
         """
         Not available in controller mode.
         """
@@ -127,7 +127,7 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
         """
         raise TypeError("Not supported in device mode")
 
-    async def get_read_after_write(self) -> None:
+    async def get_read_after_write(self) -> bool:
         """
         Not available in device mode.
         """
@@ -162,7 +162,7 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
             length: int | None = None,
             character: bytes | None = None,
             force_poll: bool = True
-    ) -> None:
+    ) -> bytes:
         """
         Not available in device mode.
         """
@@ -174,13 +174,13 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
         """
         raise TypeError("Not supported in device mode")
 
-    async def serial_poll(self, pad: int = 0, sad: int = 0) -> None:
+    async def serial_poll(self, pad: int = 0, sad: int = 0) -> int:
         """
         Not available in device mode.
         """
         raise TypeError("Not supported in device mode")
 
-    async def test_srq(self) -> None:
+    async def test_srq(self) -> bool:
         """
         Not available in device mode.
         """
@@ -195,7 +195,7 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
         """
         raise TypeError("Not supported in device mode")
 
-    async def wait(self, mask: int) -> None:
+    async def wait(self, mask: int) -> int:
         """
         Not available in device mode.
         """
