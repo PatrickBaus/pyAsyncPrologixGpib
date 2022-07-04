@@ -22,7 +22,7 @@ jobs:
       - name: Installs and upgrades pip and the build dependencies
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip .[dev]
+          python3 -m pip install .[dev]
 
       - name: Build and Upload to PyPI
         run: |
