@@ -17,17 +17,22 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        python-version: ["3,7", "3.8", "3.9", "3.10"]
+
     steps:
+    - name: Checkout repository
     - uses: actions/checkout@v3
-    - name: Set up Python 3.10
+    - name: Set up python ${{ matrix.python-version }}
       uses: actions/setup-python@v3
       with:
-        python-version: "3.10"
-    - name: Install dependencies
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies for testing
       run: |
         python -m pip install --upgrade pip
         pip install .[test]
-    - name: pylint
+    - name: Analyze code with pylint
       run: |
         # stop the build if there are Python syntax errors or undefined names
-        pylint ./prologix_gpib_async
+        pylint --reports n prologix_gpib_async
