@@ -27,7 +27,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install .[test]
-    - name: Lint with Pylint
+    - name: pylint
       run: |
         # stop the build if there are Python syntax errors or undefined names
         pylint ./prologix_gpib_async
