@@ -35,7 +35,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "build", "isort", "pylint", "twine"
+    "black", "build", "isort", "mypy", "pylint", "twine"
 ]
 
 test = [
@@ -47,6 +47,9 @@ max-line-length = 120
 
 [tool.isort]
 line_length = 120
+
+[tool.black]
+line-length = 120
 
 [build-system]
 requires = [
