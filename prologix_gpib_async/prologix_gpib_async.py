@@ -49,7 +49,8 @@ class RqsMask(Flag):
 
 
 @dataclass
-class DeviceState:
+class DeviceState:  # pylint: disable=too-many-instance-attributes # This is how it is. No way around it.
+    """Represents the state of the Prologix adapter."""
     pad: int
     sad: int
     send_eoi: bool
