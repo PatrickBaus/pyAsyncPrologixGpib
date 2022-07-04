@@ -6,11 +6,12 @@ is useful for embedded devices, that can only manage a limited number of connect
 from __future__ import annotations
 
 import asyncio
-import errno    # The error numbers can be found in /usr/include/asm-generic/errno.h
+import errno  # The error numbers can be found in /usr/include/asm-generic/errno.h
 import logging
 from asyncio import StreamWriter
 from types import TracebackType
 from typing import Any, Type
+
 try:
     from typing import Self  # type: ignore # Python >=3.11
 except ImportError:

@@ -35,7 +35,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "build", "pylint", "twine"
+    "build", "isort", "pylint", "twine"
 ]
 
 test = [
@@ -44,6 +44,9 @@ test = [
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length = 120
+
+[tool.isort]
+line_length = 120
 
 [build-system]
 requires = [

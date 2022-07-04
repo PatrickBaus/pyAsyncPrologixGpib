@@ -7,12 +7,14 @@ import asyncio
 from dataclasses import dataclass
 from types import TracebackType
 from typing import Type
+
 try:
     from typing import Self  # type: ignore # Python >=3.11
 except ImportError:
     from typing_extensions import Self
+
+import re  # needed to escape characters in the byte stream
 from enum import Enum, Flag, unique
-import re   # needed to escape characters in the byte stream
 
 from .ip_connection import AsyncSharedIPConnection
 
