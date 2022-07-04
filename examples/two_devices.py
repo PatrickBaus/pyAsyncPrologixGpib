@@ -16,24 +16,28 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # ##### END GPL LICENSE BLOCK #####
+"""An example to demonstrate operating two SCPI devices simultaneously via the Prologix GPIB adapter."""
 
 import asyncio
 
 # Devices
 from prologix_gpib_async import AsyncPrologixGpibEthernetController
 
-ip_address = "localhost"
+IP_ADDRESS = "localhost"
 
 
 async def main():
+    """This example will print the IDs of the two different SCPI devices"""
     try:
-        async with AsyncPrologixGpibEthernetController(ip_address, pad=22) as gpib_device1,\
-                AsyncPrologixGpibEthernetController(ip_address, pad=10) as gpib_device2:
-            await gpib_device1.write(b'*IDN?')    # Automatically changes address to device 22
+        async with AsyncPrologixGpibEthernetController(
+            IP_ADDRESS, pad=22
+        ) as gpib_device1, AsyncPrologixGpibEthernetController(IP_ADDRESS, pad=10) as gpib_device2:
+            await gpib_device1.write(b"*IDN?")  # Automatically changes address to device 22
             print(await gpib_device1.read())
-            await gpib_device2.write(b'*IDN?')    # Automatically changes address to device 10
+            await gpib_device2.write(b"*IDN?")  # Automatically changes address to device 10
             print(await gpib_device2.read())
     except (ConnectionError, ConnectionRefusedError):
         print("Could not connect to remote target. Is the device connected?")
+
 
 asyncio.run(main())

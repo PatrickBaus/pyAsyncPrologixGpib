@@ -35,7 +35,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "black", "build", "isort", "mypy", "pylint", "twine"
+    "black", "build", "isort", "mypy", "pre-commit", "pylint", "twine",
 ]
 
 test = [

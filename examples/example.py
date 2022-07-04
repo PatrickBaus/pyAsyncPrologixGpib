@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # ##### END GPL LICENSE BLOCK #####
+"""A simple example to demonstrate operating a single SCPI device via the Prologix GPIB adapter."""
 
 import asyncio
 
@@ -24,8 +25,10 @@ from prologix_gpib_async import AsyncPrologixGpibEthernetController
 
 
 async def main():
+    """This example will print the controller version and the ID of the attached SCPI device"""
     try:
-        # The primary address (e.g. 22) can be anything in range(1,31).There is no device connection required for this example
+        # The primary address (e.g. 22) can be anything in range(1,31).
+        # There is no device connection required for this example
         async with AsyncPrologixGpibEthernetController("localhost", pad=22) as gpib_device:
             version = await gpib_device.version()
             print("Controller version:", version)
@@ -36,5 +39,6 @@ async def main():
             print("SCPI device id:", device_id)
     except (ConnectionError, ConnectionRefusedError):
         print("Could not connect to remote target. Is the device connected?")
+
 
 asyncio.run(main())

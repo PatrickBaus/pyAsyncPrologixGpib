@@ -26,22 +26,22 @@ from __future__ import annotations
 import asyncio
 import time
 from asyncio import Task
-
 from decimal import Decimal
 from random import uniform
 from uuid import UUID
 
-import simplejson as json
 import asyncio_mqtt
+import simplejson as json
+
 from prologix_gpib_async import AsyncPrologixGpibEthernetController
 
 DEVICE_IP = "localhost"
-GPIB_PAD = 3    # The GPIB address of the device
+GPIB_PAD = 3  # The GPIB address of the device
 MQTT_HOST = "localhost"
-MQTT_TOPIC = "sensors/room_1/frequency/device_1"    # The topic, where the data is to be published
+MQTT_TOPIC = "sensors/room_1/frequency/device_1"  # The topic, where the data is to be published
 # The device id is used to uniquely identify the device on the sensor network
 # Generate a new UUID by calling UUID()
-DEVICE_UUID = UUID('7fc6e6e5-bf24-4c45-a881-d69d299a5b69')
+DEVICE_UUID = UUID("7fc6e6e5-bf24-4c45-a881-d69d299a5b69")
 
 # The initial commands sent to the device after connecting
 INIT_COMMANDS = [
@@ -51,7 +51,7 @@ INIT_COMMANDS = [
     b":INP1:IMP 50",
     b":FREQ:ARM:STOP:SOUR DIG",
     b":FREQ:ARM:STOP:DIG 8",
-    b":INIT:CONT ON"
+    b":INIT:CONT ON",
 ]
 READ_INTERVAL = 10  # in seconds
 
@@ -71,8 +71,9 @@ async def data_producer(output_queue: asyncio.Queue[Decimal], reconnect_interval
     while "loop not cancelled":
         try:
             # Add some jitter to the reconnect-interval to prevent the controller from flooding the source
-            jittered_reconnect_interval = uniform(reconnect_interval,
-                                                  min(20 * reconnect_interval, jittered_reconnect_interval * 3))
+            jittered_reconnect_interval = uniform(
+                reconnect_interval, min(20 * reconnect_interval, jittered_reconnect_interval * 3)
+            )
             async with AsyncPrologixGpibEthernetController(DEVICE_IP, pad=GPIB_PAD) as gpib_device:
                 print(f"Connected to {gpib_device}")
                 # Run the initial commands
@@ -81,12 +82,12 @@ async def data_producer(output_queue: asyncio.Queue[Decimal], reconnect_interval
                 # Then start reading the data
                 while "Connected":
                     start_of_query = time.monotonic()
-                    await gpib_device.write(b':ABORt')
-                    await gpib_device.write(b':FETCh?')
+                    await gpib_device.write(b":ABORt")
+                    await gpib_device.write(b":FETCh?")
                     value = await gpib_device.read()
                     # Convert to decimal instead of float to keep the precision
                     value = Decimal(value[:-1].decode("utf8"))
-                    #output_queue.put_nowait(value)
+                    output_queue.put_nowait(value)
                     print(f"Read: {value} Hz")
                     await asyncio.sleep(READ_INTERVAL - time.monotonic() + start_of_query)
         except asyncio.TimeoutError:
@@ -100,10 +101,7 @@ async def data_producer(output_queue: asyncio.Queue[Decimal], reconnect_interval
             await asyncio.sleep(jittered_reconnect_interval)
 
 
-async def data_consumer(
-        input_queue: asyncio.Queue[Decimal],
-        reconnect_interval: float
-) -> None:
+async def data_consumer(input_queue: asyncio.Queue[Decimal], reconnect_interval: float) -> None:
     """
     The consumer will read the data from the queue, encode it to JSON and push it to an MQTT topic.
     Parameters
@@ -125,11 +123,11 @@ async def data_consumer(
                     # Typically sensors return data as decimals or ints to preserve the precision
                     payload = json.dumps(
                         {
-                            'timestamp': time.time(),  # The current timestamp
-                            'uuid': str(DEVICE_UUID),  # The unique device id to identify the sender on the network
-                            'value': value,
+                            "timestamp": time.time(),  # The current timestamp
+                            "uuid": str(DEVICE_UUID),  # The unique device id to identify the sender on the network
+                            "value": value,
                         },
-                        use_decimal=True
+                        use_decimal=True,
                     )
                     await mqtt_client.publish(MQTT_TOPIC, payload=payload, qos=2)
                     payload = None
@@ -145,7 +143,7 @@ async def main() -> None:
     """
     tasks: set[Task] = set()
     try:
-        data_queue = asyncio.Queue()
+        data_queue: asyncio.Queue[Decimal] = asyncio.Queue()
 
         task = asyncio.create_task(data_producer(output_queue=data_queue, reconnect_interval=3))
         tasks.add(task)
@@ -155,11 +153,12 @@ async def main() -> None:
         await asyncio.gather(*tasks)
     finally:
         # Cancel all tasks
-        [task.cancel() for task in tasks if not task.done()]
+        [task.cancel() for task in tasks if not task.done()]  # pylint: disable=expression-not-assigned
         results = await asyncio.gather(*tasks, return_exceptions=True)
         for result in results:
             # Check for exceptions, but ignore asyncio.CancelledError, which inherits from BaseException not Exception
             if isinstance(result, Exception):
                 print("Error during shutdown:", result)
+
 
 asyncio.run(main())
