@@ -1,14 +1,14 @@
-name: Upload to pypi.org
+name: Upload to test.pypi.org
 
 on:
-  # Triggers the workflow when a release is created
-  release:
-    types: [created]
+  # Triggers the workflow on push to the master branch
+  push:
+    branches: [ master ]
 
   workflow_dispatch:
 
 jobs:
-  upload:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -31,4 +31,5 @@ jobs:
           python3 -m twine upload dist/*
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.TWINE_TOKEN }}
+          TWINE_PASSWORD: ${{ secrets.TWINE_TEST_TOKEN }}
+          TWINE_REPOSITORY: testpypi
