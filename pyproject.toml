@@ -42,6 +42,9 @@ test = [
     "mypy", "pylint",
 ]
 
+[tool.pylint.'MESSAGES CONTROL']
+max-line-length = 120
+
 [build-system]
 requires = [
     "setuptools>=61.0",
