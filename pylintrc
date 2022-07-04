@@ -1,6 +1,0 @@
-[MASTER]
-# Needed to find the module if it is not yet installed in the python module directory
-init-hook="from pylint.config import find_pylintrc; import os, sys; sys.path.append(os.path.dirname(find_pylintrc()))"
-
-[MESSAGES CONTROL]
-disable=line-too-long
