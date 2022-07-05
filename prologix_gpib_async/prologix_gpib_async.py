@@ -230,7 +230,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
 
     async def __query_command(self, command: bytes) -> bytes:
         """
-        Issue a Prologix command and return the result. This function will strip the b'\r\n' control sequence returned
+        Issue a Prologix command and return the result. This function will strip the b"\r\n" control sequence returned
         by the controller.
         Note: Before calling this function, acquire the self.__conn.meta['lock'], to ensure, that only one read
         request is performed.
@@ -246,14 +246,14 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
             Sequence of bytes which was read
         """
         await self.__write(command)
-        return (await self.__conn.read(eol_character=b"\n"))[:-2]  # strip the EOT characters (b'\r\n')
+        return (await self.__conn.read(eol_character=b"\n"))[:-2]  # strip the EOT characters (b"\r\n")
 
     @staticmethod
     def __escape_data(data: bytes) -> bytes:
         """
-        The prologix adapter uses ++ to signal commands. The b'\r\n' characters are used to separate messages. In order
-        to transmit these characters to the GPIB device, they need to be escaped using the ESC character (b'\x1B').
-        Therefore b'\r', b'\n', b'\x1B' (27, ESC) and b'+' need to be escaped.
+        The prologix adapter uses ++ to signal commands. The b"\r\n" characters are used to separate messages. In order
+        to transmit these characters to the GPIB device, they need to be escaped using the ESC character (b"\x1B").
+        Therefore b"\r", b"\n", b"\x1B" (27, ESC) and b"+" need to be escaped.
 
         Parameters
         ----------
@@ -291,8 +291,8 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         Read data until an EOI (End of Identify) was received (default), or if the character parameter is set until the
         character is received. Using the len parameter it is possible to read only a certain number of bytes.
         The underlying network protocol is a stream protocol, which does not know about the EOI of the GPIB bus. By
-        default, a packet is terminated by a b'\n'. If the device does not terminate its packets with either b'\r\n' or
-        b'\n', consider using an EOT character, if there is no way of knowing the number of bytes returned.
+        default, a packet is terminated by a b"\n". If the device does not terminate its packets with either b"\r\n" or
+        b"\n", consider using an EOT character, if there is no way of knowing the number of bytes returned.
         When using the "read after write" feature, force_poll can be set to False, when reading after sending a
         command.
 
@@ -453,7 +453,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
 
     async def set_eos_mode(self, mode: EosMode) -> None:
         """
-        Some older devices do not listen to the EOI, but instead for b'\r', b'\n' or b'\r\n'. Enable this setting by
+        Some older devices do not listen to the EOI, but instead for b"\r", b"\n" or b"\r\n". Enable this setting by
         choosing the appropriate EosMode enum. The GPIB controller will then automatically append the control character
         when sending the EOI signal.
 
