@@ -25,7 +25,6 @@ jobs:
           python3 -m pip install .[dev]
 
       - name: Build and Upload to PyPI
-        continue-on-error: true
         run: |
           python3 -m build
           python3 -m twine upload dist/*
