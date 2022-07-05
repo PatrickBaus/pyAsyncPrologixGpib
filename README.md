@@ -1,7 +1,7 @@
 [![pylint](https://github.com/PatrickBaus/pyAsyncPrologixGpib/actions/workflows/pylint.yml/badge.svg)](https://github.com/PatrickBaus/pyAsyncPrologixGpib/actions/workflows/pylint.yml)
-[![PyPI](https://img.shields.io/pypi/v/prologix_gpib_async)](https://pypi.org/project/prologix-gpib-async/)
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/prologix_gpib_async)
-![PyPI - Status](https://img.shields.io/pypi/status/prologix_gpib_async)
+[![PyPI](https://img.shields.io/pypi/v/prologix-gpib-async)](https://pypi.org/project/prologix-gpib-async/)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/prologix-gpib-async)
+![PyPI - Status](https://img.shields.io/pypi/status/prologix-gpib-async)
 [![code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 # prologix_gpib_async
 Python3 AsyncIO Prologix GPIB Driver. This library requires Python [asyncio](https://docs.python.org/3/library/asyncio.html). In contrast to a synchronous implementation, this library makes it possible to control multiple GPIB controllers at once and work with large setups.
