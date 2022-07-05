@@ -17,7 +17,6 @@ The library is fully type-hinted.
 Tested using Linux, should work for Mac OSX, Windows and any OS with Python support.
 
 ## Setup
-
 To install the library in a virtual environment (always use venvs with every project):
 
 ```bash
