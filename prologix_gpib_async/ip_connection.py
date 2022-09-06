@@ -252,7 +252,7 @@ class _AsyncIPConnection:
                     self.__logger.debug("Data read: %s", data)
                     return data
                 except asyncio.TimeoutError:
-                    self.__logger.error("Timeout (>%d s) while reading data.", self.__timeout)
+                    self.__logger.debug("Timeout (>%d s) while reading data.", self.__timeout)
                     raise
                 except asyncio.IncompleteReadError as exc:
                     if len(exc.partial) > 0:  # pylint: disable=no-else-return
