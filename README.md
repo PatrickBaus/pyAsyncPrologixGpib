@@ -1,4 +1,4 @@
-[![pylint](https://github.com/PatrickBaus/pyAsyncPrologixGpib/actions/workflows/pylint.yml/badge.svg)](https://github.com/PatrickBaus/pyAsyncPrologixGpib/actions/workflows/pylint.yml)
+[![pylint](../../actions/workflows/pylint.yml/badge.svg)](../../actions/workflows/pylint.yml)
 [![PyPI](https://img.shields.io/pypi/v/prologix-gpib-async)](https://pypi.org/project/prologix-gpib-async/)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/prologix-gpib-async)
 ![PyPI - Status](https://img.shields.io/pypi/status/prologix-gpib-async)
