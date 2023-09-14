@@ -45,7 +45,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpibController):
         ethernet_timeout: float = 1,  # in seconds
         wait_delay: float = 0.25,  # in s seconds
     ) -> None:
-        conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=(timeout + ethernet_timeout))  # in seconds
+        conn = AsyncSharedIPConnection(hostname=hostname, port=port, timeout=timeout + ethernet_timeout)  # in seconds
         super().__init__(
             conn=conn,
             pad=pad,
