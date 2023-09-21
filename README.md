@@ -2,6 +2,7 @@
 [![PyPI](https://img.shields.io/pypi/v/prologix-gpib-async)](https://pypi.org/project/prologix-gpib-async/)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/prologix-gpib-async)
 ![PyPI - Status](https://img.shields.io/pypi/status/prologix-gpib-async)
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE)
 [![code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 # prologix_gpib_async
 Python3 AsyncIO Prologix GPIB Driver. This library requires Python
