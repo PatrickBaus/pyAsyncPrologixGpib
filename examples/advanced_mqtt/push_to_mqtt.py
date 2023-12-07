@@ -86,9 +86,9 @@ async def data_producer(output_queue: asyncio.Queue[Decimal], reconnect_interval
                     await gpib_device.write(b":FETCh?")
                     value = await gpib_device.read()
                     # Convert to decimal instead of float to keep the precision
-                    value = Decimal(value[:-1].decode("utf8"))
-                    output_queue.put_nowait(value)
-                    print(f"Read: {value} Hz")
+                    converted_value = Decimal(value[:-1].decode("utf8"))
+                    output_queue.put_nowait(converted_value)
+                    print(f"Read: {converted_value} Hz")
                     await asyncio.sleep(READ_INTERVAL - time.monotonic() + start_of_query)
         except asyncio.TimeoutError:
             print(f"Timeout received. Restarting in {jittered_reconnect_interval:g} s")
