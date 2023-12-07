@@ -294,6 +294,8 @@ class _AsyncIPConnection:
                 self.__reader, self.__writer = await asyncio.wait_for(
                     asyncio.open_connection(host=hostname, port=port), timeout=self.__timeout
                 )
+            except asyncio.TimeoutError:
+                raise NetworkError("Prologix IP connection error during connect: Timeout") from None
             except OSError as error:
                 if error.errno in (errno.ENETUNREACH, errno.EHOSTUNREACH):
                     raise NetworkError(
@@ -304,8 +306,6 @@ class _AsyncIPConnection:
                         f"Prologix IP connection error: The host '{hostname}:{port}' refused to connect."
                     ) from None
                 raise
-            except asyncio.TimeoutError:
-                raise NetworkError("Prologix IP connection error during connect: Timeout") from None
 
             self.__lock = asyncio.Lock()
             self.__logger.info("Prologix IP connection (%s:%d) connected", *self.__host)
