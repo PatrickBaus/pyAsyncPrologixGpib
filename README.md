@@ -93,7 +93,6 @@ controller. Otherwise, the driver state and the controller state may get out of 
 Example:
 ```python
 import asyncio
-from contextlib import AsyncExitStack
 
 # Devices
 from prologix_gpib_async import AsyncPrologixGpibEthernetController
@@ -102,12 +101,11 @@ ip_address = "127.0.0.1"
 
 
 async def main():
+    """This example will print the IDs of the two different SCPI devices"""
     try:
-        async with AsyncExitStack() as stack:
-            gpib_device1, gpib_device2 = await asyncio.gather(
-                stack.enter_async_context(AsyncPrologixGpibEthernetController(ip_address, pad=22)),
-                stack.enter_async_context(AsyncPrologixGpibEthernetController(ip_address, pad=10)),
-            )
+        async with AsyncPrologixGpibEthernetController(
+            ip_address, pad=22
+        ) as gpib_device1, AsyncPrologixGpibEthernetController(ip_address, pad=10) as gpib_device2:
             await gpib_device1.write(b"*IDN?")  # Automatically changes address to device 22
             print(await gpib_device1.read())
             await gpib_device2.write(b"*IDN?")  # Automatically changes address to device 10
