@@ -119,16 +119,16 @@ async def data_consumer(input_queue: asyncio.Queue[Decimal], reconnect_interval:
                     # Only get a new value from the queue, if we have successfully sent it to the network
                     if payload is None:
                         value = await input_queue.get()
-                    # convert payload to JSON
-                    # Typically sensors return data as decimals or ints to preserve the precision
-                    payload = json.dumps(
-                        {
-                            "timestamp": time.time(),  # The current timestamp
-                            "uuid": str(DEVICE_UUID),  # The unique device id to identify the sender on the network
-                            "value": value,
-                        },
-                        use_decimal=True,
-                    )
+                        # convert payload to JSON
+                        # Typically sensors return data as decimals or ints to preserve the precision
+                        payload = json.dumps(
+                            {
+                                "timestamp": time.time(),  # The current timestamp
+                                "uuid": str(DEVICE_UUID),  # The unique device id to identify the sender on the network
+                                "value": value,
+                            },
+                            use_decimal=True,
+                        )
                     await mqtt_client.publish(MQTT_TOPIC, payload=payload, qos=2)
                     payload = None
                     input_queue.task_done()  # finally mark the job as done

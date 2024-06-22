@@ -2,6 +2,7 @@
 This file contains classes for the Prologix GPIB Ethernet adapter.
 The manual can be found here: http://prologix.biz/downloads/PrologixGpibEthernetManual.pdf
 """
+
 from .ip_connection import AsyncSharedIPConnection
 from .prologix_gpib_async import EosMode
 from .prologix_gpib_base import AsyncPrologixGpibController, AsyncPrologixGpibDevice

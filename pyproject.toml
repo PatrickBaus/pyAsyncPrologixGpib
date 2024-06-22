@@ -1,5 +1,5 @@
 [project]
-name = "prologix_gpib_async"
+name = "prologix-gpib-async"
 authors = [
   { name="Patrick Baus", email="patrick.baus@physik.tu-darmstadt.de" },
 ]
@@ -40,7 +40,7 @@ dev = [
 ]
 
 test = [
-    "asyncio_mqtt", "mypy", "pylint", "simplejson",
+    "asyncio_mqtt", "mypy", "pylint", "setuptools", "simplejson",
 ]
 
 [tool.pylint.'MESSAGES CONTROL']

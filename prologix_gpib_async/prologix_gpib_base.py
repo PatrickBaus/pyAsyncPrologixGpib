@@ -1,6 +1,7 @@
 """
 This file contains the base classes of a GPIB controller or device.
 """
+
 from __future__ import annotations
 
 from .ip_connection import AsyncSharedIPConnection
