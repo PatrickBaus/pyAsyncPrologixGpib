@@ -1,5 +1,5 @@
 [project]
-name = "prologix_gpib_async"
+name = "prologix-gpib-async"
 authors = [
   { name="Patrick Baus", email="patrick.baus@physik.tu-darmstadt.de" },
 ]
