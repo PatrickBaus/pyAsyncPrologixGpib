@@ -3,6 +3,7 @@ This module provides the two classes AsyncIPConnection() and AsyncSharedIPConnec
 version uses a connection pool to reduce the number of individual connections made to the host. This
 is useful for embedded devices, that can only manage a limited number of connections like the prologix adapters.
 """
+
 from __future__ import annotations
 
 import asyncio

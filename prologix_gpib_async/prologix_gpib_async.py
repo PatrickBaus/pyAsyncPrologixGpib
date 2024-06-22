@@ -1,6 +1,7 @@
 """
 This file implements the API used by the Prologix GPIB adapters in pure python using AsyncIO.
 """
+
 from __future__ import annotations
 
 import asyncio
