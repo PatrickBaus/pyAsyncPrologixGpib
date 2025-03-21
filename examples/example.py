@@ -32,10 +32,10 @@ async def main():
         async with AsyncPrologixGpibEthernetController("localhost", pad=22) as gpib_device:
             version = await gpib_device.version()
             print("Controller version:", version)
-            gpib_device.write("*IDN?")
+            await gpib_device.write(b"*IDN?")
             # Instruct the controller to  read until the device sets <EOI>, then read until '\n'
             # from the prologix controller
-            device_id = gpib_device.read()
+            device_id = await gpib_device.read()
             print("SCPI device id:", device_id)
     except (ConnectionError, ConnectionRefusedError):
         print("Could not connect to remote target. Is the device connected?")

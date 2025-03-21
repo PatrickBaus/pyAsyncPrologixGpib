@@ -72,10 +72,10 @@ class DeviceState:  # pylint: disable=too-many-instance-attributes # This is how
 # The following characters need to be escaped according to:
 # http://prologix.biz/downloads/PrologixGpibEthernetManual.pdf
 translation_map = {
-    b"\r": b"\x1B\r",
-    b"\n": b"\x1B\n",
-    b"+": b"\x1B+",
-    b"\x1B": b"\x1B\x1B",
+    b"\r": b"\x1b\r",
+    b"\n": b"\x1b\n",
+    b"+": b"\x1b+",
+    b"\x1b": b"\x1b\x1b",
 }
 
 # Generate a regex pattern which matches either of the characters (|).
@@ -115,7 +115,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         """
         return self.__state.sad
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         conn: AsyncSharedIPConnection,
         pad: int,
@@ -253,8 +253,8 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
     def __escape_data(data: bytes) -> bytes:
         """
         The prologix adapter uses ++ to signal commands. The b"\r\n" characters are used to separate messages. In order
-        to transmit these characters to the GPIB device, they need to be escaped using the ESC character (b"\x1B").
-        Therefore b"\r", b"\n", b"\x1B" (27, ESC) and b"+" need to be escaped.
+        to transmit these characters to the GPIB device, they need to be escaped using the ESC character (b"\x1b").
+        Therefore b"\r", b"\n", b"\x1b" (27, ESC) and b"+" need to be escaped.
 
         Parameters
         ----------

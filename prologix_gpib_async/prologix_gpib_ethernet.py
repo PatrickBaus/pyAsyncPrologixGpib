@@ -34,7 +34,7 @@ class AsyncPrologixGpibEthernetController(AsyncPrologixGpibController):
         """
         return self._conn.port
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         hostname: str,
         pad: int,
@@ -84,7 +84,7 @@ class AsyncPrologixGpibEthernetDevice(AsyncPrologixGpibDevice):
         """
         return self._conn.port
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         hostname: str,
         pad: int,
