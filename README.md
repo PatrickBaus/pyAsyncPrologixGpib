@@ -42,9 +42,9 @@ async with AsyncPrologixGpibEthernetController("127.0.0.1", pad=22) as gpib_devi
     ...
 ```
 
-Sending a "my command" command to address 22 (as set up previously)
+Sending a "my command" command to address 22 (as set up previously). Do note that strings have to be sent as bytes literals.
 ```python
-await gpib_device.write("my command")
+await gpib_device.write(b"my command")
 ```
 
 Reading data from address 22
