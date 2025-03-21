@@ -13,7 +13,7 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
     A Prologix GPIB controller with a custom connection object. It acts as a controller on the GPIB bus.
     """
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments)
         self,
         conn: AsyncSharedIPConnection,
         pad: int,
@@ -85,7 +85,7 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
     A Prologix GPIB device with a custom connection object. It acts as a device on the GPIB bus.
     """
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments)
         self,
         conn: AsyncSharedIPConnection,
         pad: int,
