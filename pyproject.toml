@@ -40,7 +40,7 @@ dev = [
 ]
 
 test = [
-    "asyncio_mqtt", "mypy", "pylint", "setuptools", "simplejson",
+    "asyncio_mqtt", "mypy", "pylint", "pytest", "setuptools", "simplejson",
 ]
 
 [tool.pylint.'MESSAGES CONTROL']
