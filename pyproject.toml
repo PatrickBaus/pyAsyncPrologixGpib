@@ -42,9 +42,10 @@ examples = [
 test = [
     "pytest",
 ]
-# Linters and type checkers. pylint also checks the examples, so it needs their dependencies.
+# Linters and type checkers. pylint also checks examples/, tests/ and setup.py, so it needs their dependencies.
 lint = [
-    "prologix-gpib-async[examples]", "black", "isort", "mypy", "pre-commit", "pylint", "types-simplejson",
+    "prologix-gpib-async[examples,test]",
+    "black", "isort", "mypy", "pre-commit", "pylint", "setuptools", "types-simplejson",
 ]
 # Building and publishing to PyPI
 build = [
