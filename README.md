@@ -2,14 +2,14 @@
 
 [Full report](https://htmlpreview.github.io/?https://github.com/PatrickBaus/pyAsyncPrologixGpib/blob/python-coverage-comment-action-data/htmlcov/index.html)
 
-| Name                                              |    Stmts |     Miss |   Branch |   BrPart |   Cover |   Missing |
-|-------------------------------------------------- | -------: | -------: | -------: | -------: | ------: | --------: |
-| prologix\_gpib\_async/\_\_init\_\_.py             |        5 |        0 |        0 |        0 |    100% |           |
-| prologix\_gpib\_async/ip\_connection.py           |      220 |       50 |       48 |       14 |     73% |78-84, 101-\>exit, 123, 133, 143, 173-174, 179, 183, 195, 202-212, 238, 248, 252, 266-277, 298-310, 319-\>exit, 337-341, 417-421, 434-\>exit, 441-\>446, 463, 475, 486, 515, 530-\>533, 550, 576 |
-| prologix\_gpib\_async/prologix\_gpib\_async.py    |      322 |       76 |       52 |        7 |     77% |95, 115, 165, 189-191, 197, 319-\>325, 329, 341-342, 354-355, 373-374, 388-389, 400, 415-429, 441-442, 460-461, 474-475, 494-495, 508-509, 528-529, 542-543, 560-561, 572-577, 586, 597-598, 615, 621-623, 632-634, 646-650, 656-658, 664-666, 687, 710-712, 739-741, 762-\>766, 837-838, 858-859, 871, 880-881 |
-| prologix\_gpib\_async/prologix\_gpib\_base.py     |       68 |       18 |        0 |        0 |     74% |60, 67, 74, 81, 88, 134, 141, 148, 155, 162, 169, 176, 183, 190, 197, 204, 211, 218 |
-| prologix\_gpib\_async/prologix\_gpib\_ethernet.py |       23 |        4 |        0 |        0 |     83% |25, 35, 75, 85 |
-| **TOTAL**                                         |  **638** |  **148** |  **100** |   **21** | **76%** |           |
+| Name                                              |    Stmts |     Miss |   Branch |   BrPart |    Cover |   Missing |
+|-------------------------------------------------- | -------: | -------: | -------: | -------: | -------: | --------: |
+| prologix\_gpib\_async/\_\_init\_\_.py             |        5 |        0 |        0 |        0 |     100% |           |
+| prologix\_gpib\_async/ip\_connection.py           |      220 |        0 |       48 |        0 |     100% |           |
+| prologix\_gpib\_async/prologix\_gpib\_async.py    |      322 |        0 |       52 |        0 |     100% |           |
+| prologix\_gpib\_async/prologix\_gpib\_base.py     |       68 |        0 |        0 |        0 |     100% |           |
+| prologix\_gpib\_async/prologix\_gpib\_ethernet.py |       23 |        0 |        0 |        0 |     100% |           |
+| **TOTAL**                                         |  **638** |    **0** |  **100** |    **0** | **100%** |           |
 
 
 ## Setup coverage badge
