@@ -1,10 +1,13 @@
 """Tests for the IP connection classes."""
 
 import asyncio
+import time
 
-from prologix_gpib_async.ip_connection import _AsyncIPConnection
+import pytest
 
-from .fake_prologix import run
+from prologix_gpib_async.ip_connection import AsyncSharedIPConnection, _AsyncIPConnection
+
+from .fake_prologix import FakePrologix, run
 
 
 async def _serve_once(payload: bytes):
@@ -33,3 +36,22 @@ def test_partial_read_returns_partial_data():
                 await conn.disconnect()
 
     assert run(main()) == b"abc"
+
+
+def test_shared_connection_uses_own_timeout():
+    """Two clients sharing a pooled connection each keep their own read timeout."""
+
+    async def main():
+        async with FakePrologix() as adapter:  # never replies
+            async with AsyncSharedIPConnection("127.0.0.1", adapter.port, timeout=10) as slow, AsyncSharedIPConnection(
+                "127.0.0.1", adapter.port, timeout=0.2
+            ) as fast:
+                assert adapter.connections == 1  # the connection really is shared
+                start = time.monotonic()
+                with pytest.raises(asyncio.TimeoutError):
+                    await fast.read(eol_character=b"\n")
+                elapsed = time.monotonic() - start
+                await slow.write(b"keep slow in use")
+                return elapsed
+
+    assert run(main(), timeout=3) < 1
