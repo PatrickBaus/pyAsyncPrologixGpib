@@ -34,12 +34,26 @@ dependencies = [
 "Download" = "https://github.com/PatrickBaus/pyAsyncPrologixGpib/releases"
 
 [project.optional-dependencies]
-dev = [
-    "asyncio_mqtt", "black", "build", "isort", "mypy", "pre-commit", "pylint", "simplejson", "twine",
+# Needed to run the scripts in examples/
+examples = [
+    "asyncio-mqtt", "simplejson",
 ]
-
+# Needed to run the test suite
 test = [
-    "asyncio_mqtt", "mypy", "pylint", "pytest", "setuptools", "simplejson",
+    "pytest",
+]
+# Linters and type checkers. pylint also checks examples/, tests/ and setup.py, so it needs their dependencies.
+lint = [
+    "prologix-gpib-async[examples,test]",
+    "black", "isort", "mypy", "pre-commit", "pylint", "setuptools", "types-simplejson",
+]
+# Building and publishing to PyPI
+build = [
+    "build", "twine",
+]
+# Everything needed for development
+dev = [
+    "prologix-gpib-async[examples,test,lint,build]",
 ]
 
 [tool.pylint.'MESSAGES CONTROL']
