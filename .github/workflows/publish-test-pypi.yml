@@ -38,5 +38,5 @@ jobs:
         with:
           password: ${{ secrets.TWINE_TEST_TOKEN }}
           repository-url: https://test.pypi.org/legacy/
-          # Pushes that do not bump the version would otherwise fail, because the version already exists
+          # Each commit gets its own development version. This only skips the upload when a run is repeated.
           skip-existing: true

@@ -121,6 +121,16 @@ asyncio.run(main())
 I use [SemVer](http://semver.org/) for versioning. For the versions available, see the
 [tags on this repository](../../tags).
 
+The version is not stored in the source code. It is taken from the git tag by
+[setuptools-scm](https://setuptools-scm.readthedocs.io/) when the package is built. To release a new version, publish a
+GitHub release with a new tag, e.g. `1.6.0`. This builds the package as version 1.6.0 and uploads it to PyPI. Commits
+after a tag get a development version like `1.6.1.dev3`.
+
+For development, install the package in editable mode, which also generates `prologix_gpib_async/_version.py`:
+```bash
+pip install -e .[dev]
+```
+
 ## Documentation
 I use the [Numpydoc](https://numpydoc.readthedocs.io/en/latest/format.html) style for documentation.
 
