@@ -29,9 +29,10 @@ IP_ADDRESS = "localhost"
 async def main():
     """This example will print the IDs of the two different SCPI devices"""
     try:
-        async with AsyncPrologixGpibEthernetController(
-            IP_ADDRESS, pad=22
-        ) as gpib_device1, AsyncPrologixGpibEthernetController(IP_ADDRESS, pad=10) as gpib_device2:
+        async with (
+            AsyncPrologixGpibEthernetController(IP_ADDRESS, pad=22) as gpib_device1,
+            AsyncPrologixGpibEthernetController(IP_ADDRESS, pad=10) as gpib_device2,
+        ):
             await gpib_device1.write(b"*IDN?")  # Automatically changes address to device 22
             print(await gpib_device1.read())
             await gpib_device2.write(b"*IDN?")  # Automatically changes address to device 10

@@ -11,12 +11,7 @@ import errno  # The error numbers can be found in /usr/include/asm-generic/errno
 import logging
 from asyncio import StreamWriter
 from types import TracebackType
-from typing import Any, Type
-
-try:
-    from typing import Self  # type: ignore # Python >=3.11
-except ImportError:
-    from typing_extensions import Self
+from typing import Any, Self, override
 
 
 class NotConnectedError(ConnectionError):
@@ -179,10 +174,11 @@ class _AsyncIPConnection:
         return self
 
     async def __aexit__(
-        self, exc_type: Type[BaseException] | None, exc: BaseException | None, traceback: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc: BaseException | None, traceback: TracebackType | None
     ) -> None:
         await self.disconnect()
 
+    @override
     def __str__(self) -> str:
         return f"AsyncIPConnection({self.hostname}:{self.port})"
 
@@ -247,17 +243,17 @@ class _AsyncIPConnection:
         async with self.__lock:
             if self.is_connected:  # We need to check again, because the connection might have closed by now
                 try:
-                    if length is None:
-                        if eol_character is None:
+                    async with asyncio.timeout(timeout):
+                        if length is not None:
+                            data = await self.__reader.readexactly(length)
+                        elif eol_character is not None:
+                            data = await self.__reader.readuntil(eol_character)
+                        else:
                             raise TypeError("Either specify the eol_character or the number of bytes to read.")
-                        coro = self.__reader.readuntil(eol_character)
-                    else:
-                        coro = self.__reader.readexactly(length)
-                    data = await asyncio.wait_for(coro, timeout=timeout)
 
                     self.__logger.debug("Data read: %s", data)
                     return data
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     self.__logger.debug("Timeout (>%s s) while reading data.", timeout)
                     raise
                 except asyncio.IncompleteReadError as exc:
@@ -297,10 +293,10 @@ class _AsyncIPConnection:
             hostname, port = self.__host[0] if hostname is None else hostname, self.__host[1] if port is None else port
             self.__host = hostname, port  # save the new values
             try:
-                self.__reader, self.__writer = await asyncio.wait_for(
-                    asyncio.open_connection(host=hostname, port=port), timeout=self.__timeout
-                )
-            except asyncio.TimeoutError:
+                async with asyncio.timeout(self.__timeout):
+                    self.__reader, self.__writer = await asyncio.open_connection(host=hostname, port=port)
+            except TimeoutError:
+                # TimeoutError is a subclass of OSError, so it must be handled first
                 raise NetworkError("Prologix IP connection error during connect: Timeout") from None
             except OSError as error:
                 if error.errno in (errno.ENETUNREACH, errno.EHOSTUNREACH):
@@ -510,10 +506,11 @@ class AsyncSharedIPConnection:
         return self
 
     async def __aexit__(
-        self, exc_type: Type[BaseException] | None, exc: BaseException | None, traceback: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc: BaseException | None, traceback: TracebackType | None
     ) -> None:
         await self.disconnect()
 
+    @override
     def __str__(self) -> str:
         return f"AsyncSharedIPConnection({self.hostname}:{self.port})"
 

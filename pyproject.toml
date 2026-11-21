@@ -6,14 +6,14 @@ authors = [
 description = "A Python AsyncIO library for the Prologix GPIB (Ethernet) adapter"
 readme = "README.md"
 license = "GPL-3.0-or-later"
-requires-python = ">=3.7"
+requires-python = ">=3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Development Status :: 5 - Production/Stable",
     "Operating System :: OS Independent",
     "Intended Audience :: Developers",
@@ -24,9 +24,7 @@ classifiers = [
 ]
 keywords = ["Prologix", "GPIB", "API"]
 dynamic = ["version"]
-dependencies = [
-    "typing-extensions; python_version <'3.11'",
-]
+dependencies = []
 
 [project.urls]
 "Homepage" = "https://github.com/PatrickBaus/pyAsyncPrologixGpib"
@@ -56,22 +54,32 @@ dev = [
     "prologix-gpib-async[examples,test,lint,build]",
 ]
 
+[tool.pylint.main]
+py-version = "3.12"
+
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length = 120
 
 [tool.isort]
 line_length = 120
 profile = "black"
+py_version = 312
 
 [tool.black]
 line-length = 120
+target-version = ["py312"]
+
+[tool.mypy]
+python_version = "3.12"
+# Require @typing.override on every overriding method, so that renaming a base method cannot silently break a subclass
+enable_error_code = ["explicit-override"]
 
 [build-system]
 requires = [
     "setuptools>=61.0",
-    "typing-extensions; python_version <'3.11'",
 ]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.dynamic]
-version = {attr = "prologix_gpib_async.__version__"}
+# Read the version from _version.py directly, so that building does not import the package
+version = {attr = "prologix_gpib_async._version.__version__"}

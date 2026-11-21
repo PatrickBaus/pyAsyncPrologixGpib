@@ -5,7 +5,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE)
 [![code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 # prologix_gpib_async
-Python3 AsyncIO Prologix GPIB Driver. This library requires Python
+Python3 AsyncIO Prologix GPIB Driver. This library requires Python 3.12 or newer and uses
 [asyncio](https://docs.python.org/3/library/asyncio.html). In contrast to a synchronous implementation, this library
 makes it possible to control multiple GPIB controllers at once and work with large setups.
 

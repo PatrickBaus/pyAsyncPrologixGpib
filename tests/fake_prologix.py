@@ -67,6 +67,7 @@ def run(coro, timeout: float = 5) -> object:
     """Run a coroutine with a hard timeout, so a broken test fails instead of hanging."""
 
     async def guarded():
-        return await asyncio.wait_for(coro, timeout)
+        async with asyncio.timeout(timeout):
+            return await coro
 
     return asyncio.run(guarded())

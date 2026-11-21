@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from prologix_gpib_async import AsyncPrologixGpibEthernetController
+from prologix_gpib_async import AsyncPrologixGpibEthernetController, RqsMask
 
 from .fake_prologix import FakePrologix, run
 
@@ -94,3 +94,96 @@ def test_reconnect_resends_configuration():
     assert connections == 2
     assert lines[0] == b"++savecfg 0"
     assert b"++addr 22" in lines
+
+
+@pytest.mark.parametrize(
+    "devices, command",
+    [
+        ((), b"++trg 22"),
+        ((10,), b"++trg 10"),
+        ((10, (22, 96)), b"++trg 10 22 96"),
+        ([[5, 100], 7], b"++trg 5 100 7"),
+    ],
+)
+def test_trigger_addresses(devices, command):
+    """trigger() accepts primary addresses and (pad, sad) pairs as tuples or lists."""
+
+    async def main():
+        async with FakePrologix() as adapter:
+            async with _controller(adapter) as gpib:
+                await gpib.trigger(devices)
+                await asyncio.sleep(0.1)
+            return adapter.lines
+
+    assert run(main())[-1] == command
+
+
+@pytest.mark.parametrize("device", ["22", (1, 2, 3), [4]])
+def test_trigger_rejects_invalid_address(device):
+    """Anything other than a pad or a (pad, sad) pair is rejected."""
+
+    async def main():
+        async with FakePrologix() as adapter:
+            async with _controller(adapter) as gpib:
+                await gpib.trigger([device])
+
+    with pytest.raises(TypeError, match="Invalid GPIB address"):
+        run(main())
+
+
+def test_wait_requires_rqs():
+    """wait() names the missing flag in its error message."""
+
+    async def main():
+        async with FakePrologix() as adapter:
+            async with _controller(adapter) as gpib:
+                await gpib.wait(RqsMask.TIMO.value)
+
+    with pytest.raises(ValueError, match=r"^RqsMask\.RQS not set$"):
+        run(main())
+
+
+def test_wait_returns_status_byte_on_srq():
+    """wait() polls the SRQ line and returns the status byte once the device requests service."""
+
+    async def main():
+        replies = {b"++srq": b"1\r\n", b"++spoll 22": b"80\r\n"}  # 80 = 0b1010000, bit 6 (RQS) set
+        async with FakePrologix(replies) as adapter:
+            async with _controller(adapter) as gpib:
+                gpib.set_wait_delay(0.1)
+                return await gpib.wait((RqsMask.RQS | RqsMask.TIMO).value)
+
+    assert run(main()) == 80
+
+
+def test_wait_times_out_without_srq():
+    """With TIMO set, wait() gives up after the timeout."""
+
+    async def main():
+        async with FakePrologix({b"++srq": b"0\r\n"}) as adapter:
+            async with _controller(adapter) as gpib:
+                gpib.set_wait_delay(0.1)
+                with pytest.raises(TimeoutError):
+                    await gpib.wait((RqsMask.RQS | RqsMask.TIMO).value)
+
+    run(main())
+
+
+def test_cancelled_wait_leaves_no_task_behind():
+    """Cancelling wait() while it polls the adapter must not leave an orphaned sleep task running."""
+
+    async def main():
+        async with FakePrologix() as adapter:  # never answers ++srq, so wait() is stuck in the poll
+            async with _controller(adapter) as gpib:
+                gpib.set_wait_delay(0.5)
+                with pytest.raises(TimeoutError):
+                    async with asyncio.timeout(0.2):
+                        await gpib.wait(RqsMask.RQS.value)
+                await asyncio.sleep(0)
+                return [
+                    task
+                    for task in asyncio.all_tasks()
+                    if not task.done() and task.get_coro().__qualname__ == "sleep"  # type: ignore[union-attr]
+                ]
+
+    assert run(main()) == []

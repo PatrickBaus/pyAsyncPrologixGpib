@@ -43,12 +43,13 @@ def test_shared_connection_uses_own_timeout():
 
     async def main():
         async with FakePrologix() as adapter:  # never replies
-            async with AsyncSharedIPConnection("127.0.0.1", adapter.port, timeout=10) as slow, AsyncSharedIPConnection(
-                "127.0.0.1", adapter.port, timeout=0.2
-            ) as fast:
+            async with (
+                AsyncSharedIPConnection("127.0.0.1", adapter.port, timeout=10) as slow,
+                AsyncSharedIPConnection("127.0.0.1", adapter.port, timeout=0.2) as fast,
+            ):
                 assert adapter.connections == 1  # the connection really is shared
                 start = time.monotonic()
-                with pytest.raises(asyncio.TimeoutError):
+                with pytest.raises(TimeoutError):
                     await fast.read(eol_character=b"\n")
                 elapsed = time.monotonic() - start
                 await slow.write(b"keep slow in use")

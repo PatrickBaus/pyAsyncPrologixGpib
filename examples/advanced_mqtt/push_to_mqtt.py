@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import asyncio
 import time
-from asyncio import Task
 from decimal import Decimal
 from random import uniform
 from uuid import UUID
@@ -77,9 +76,9 @@ async def data_producer(output_queue: asyncio.Queue[Decimal], reconnect_interval
             )
             async with AsyncPrologixGpibEthernetController(DEVICE_IP, pad=GPIB_PAD) as gpib_device:
                 print(f"Connected to {gpib_device}")
-                # Run the initial commands
-                coros = [gpib_device.write(cmd) for cmd in INIT_COMMANDS]
-                await asyncio.gather(*coros)
+                # Run the initial commands in order
+                for cmd in INIT_COMMANDS:
+                    await gpib_device.write(cmd)
                 # Then start reading the data
                 while "Connected":
                     start_of_query = time.monotonic()
@@ -91,7 +90,7 @@ async def data_producer(output_queue: asyncio.Queue[Decimal], reconnect_interval
                     output_queue.put_nowait(converted_value)
                     print(f"Read: {converted_value} Hz")
                     await asyncio.sleep(READ_INTERVAL - time.monotonic() + start_of_query)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             print(f"Timeout received. Restarting in {jittered_reconnect_interval:g} s")
             await asyncio.sleep(jittered_reconnect_interval)
         except (ConnectionError, ConnectionRefusedError) as exc:
@@ -142,24 +141,11 @@ async def main() -> None:
     """
     The main worker. It spawns the child workers for gathering the data and pushing it to the MQTT topic.
     """
-    tasks: set[Task] = set()
-    try:
-        data_queue: asyncio.Queue[Decimal] = asyncio.Queue()
-
-        task = asyncio.create_task(data_producer(output_queue=data_queue, reconnect_interval=3))
-        tasks.add(task)
-        task = asyncio.create_task(data_consumer(input_queue=data_queue, reconnect_interval=3))
-        tasks.add(task)
-
-        await asyncio.gather(*tasks)
-    finally:
-        # Cancel all tasks
-        [task.cancel() for task in tasks if not task.done()]  # pylint: disable=expression-not-assigned
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        for result in results:
-            # Check for exceptions, but ignore asyncio.CancelledError, which inherits from BaseException not Exception
-            if isinstance(result, Exception):
-                print("Error during shutdown:", result)
+    data_queue: asyncio.Queue[Decimal] = asyncio.Queue()
+    # The task group cancels the other worker, if one of them fails, and waits for both to shut down
+    async with asyncio.TaskGroup() as task_group:
+        task_group.create_task(data_producer(output_queue=data_queue, reconnect_interval=3))
+        task_group.create_task(data_consumer(input_queue=data_queue, reconnect_interval=3))
 
 
 asyncio.run(main())

@@ -4,8 +4,11 @@ This file contains the base classes of a GPIB controller or device.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from typing import override
+
 from .ip_connection import AsyncSharedIPConnection
-from .prologix_gpib_async import AsyncPrologixGpib, DeviceMode, EosMode
+from .prologix_gpib_async import AsyncPrologixGpib, DeviceMode, EosMode, GpibAddress
 
 
 class AsyncPrologixGpibController(AsyncPrologixGpib):
@@ -52,27 +55,32 @@ class AsyncPrologixGpibController(AsyncPrologixGpib):
             wait_delay=wait_delay,
         )
 
+    @override
     def __str__(self) -> str:
         return f"Prologix GPIB controller of device ({self.pad},{self.sad}) at {self._conn}"
 
+    @override
     async def set_listen_only(self, enable: bool) -> None:
         """
         Not available in controller mode.
         """
         raise TypeError("Not supported in controller mode")
 
+    @override
     async def get_listen_only(self) -> bool:
         """
         Not available in controller mode.
         """
         raise TypeError("Not supported in controller mode")
 
+    @override
     async def set_status(self, value: int) -> None:
         """
         Not available in controller mode.
         """
         raise TypeError("Not supported in controller mode")
 
+    @override
     async def get_status(self) -> int:
         """
         Not available in controller mode.
@@ -121,83 +129,95 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
             wait_delay=wait_delay,
         )
 
+    @override
     def __str__(self):
         return f"Prologix GPIB device ({self.pad},{self.sad}) at {self._conn}"
 
+    @override
     async def set_read_after_write(self, enable: bool) -> None:
         """
         Not available in device mode.
         """
         raise TypeError("Not supported in device mode")
 
+    @override
     async def get_read_after_write(self) -> bool:
         """
         Not available in device mode.
         """
         raise TypeError("Not supported in device mode")
 
+    @override
     async def clear(self) -> None:
         """
         Not available in device mode.
         """
         raise TypeError("Not supported in device mode")
 
+    @override
     async def interface_clear(self) -> None:
         """
         Not available in device mode.
         """
         raise TypeError("Not supported in device mode")
 
+    @override
     async def remote_enable(self, enable: bool = True) -> None:
         """
         Not available in device mode.
         """
         raise TypeError("Not supported in device mode")
 
+    @override
     async def ibloc(self) -> None:
         """
         Not available in device mode.
         """
         raise TypeError("Not supported in device mode")
 
+    @override
     async def read(self, length: int | None = None, character: bytes | None = None, force_poll: bool = True) -> bytes:
         """
         Not available in device mode.
         """
         raise TypeError("Not supported in device mode")
 
+    @override
     async def timeout(self, value: float) -> None:
         """
         Not available in device mode.
         """
         raise TypeError("Not supported in device mode")
 
+    @override
     async def serial_poll(self, pad: int = 0, sad: int = 0) -> int:
         """
         Not available in device mode.
         """
         raise TypeError("Not supported in device mode")
 
+    @override
     async def test_srq(self) -> bool:
         """
         Not available in device mode.
         """
         raise TypeError("Not supported in device mode")
 
-    async def trigger(
-        self, devices: tuple[int | tuple[int, int] | list[int], ...] | list[int | tuple[int, int] | list[int]] = ()
-    ) -> None:
+    @override
+    async def trigger(self, devices: Sequence[GpibAddress] = ()) -> None:
         """
         Not available in device mode.
         """
         raise TypeError("Not supported in device mode")
 
+    @override
     async def wait(self, mask: int) -> int:
         """
         Not available in device mode.
         """
         raise TypeError("Not supported in device mode")
 
+    @override
     def set_wait_delay(self, value: float) -> None:
         """
         Not available in device mode.
