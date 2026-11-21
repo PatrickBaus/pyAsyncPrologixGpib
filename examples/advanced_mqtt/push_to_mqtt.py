@@ -21,6 +21,7 @@ This is an example for a very simple data logger, that reads data from a GPIB de
 The device used for this example is a standard SCPI capable HP53131A universal counter and the data read is a frequency.
 There is only little error checking or handling. This is left as an exercise to the user.
 """
+
 from __future__ import annotations
 
 import asyncio
