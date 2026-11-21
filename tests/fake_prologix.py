@@ -16,10 +16,11 @@ class FakePrologix:
     ----------
     replies: dict
         Maps a received line (without the trailing b"\\n") to the raw bytes to send back. Use None to send nothing.
+        A list of replies is answered one after the other, the last reply is repeated.
     """
 
-    def __init__(self, replies: dict[bytes, bytes | None] | None = None) -> None:
-        self.replies: dict[bytes, bytes | None] = {} if replies is None else dict(replies)
+    def __init__(self, replies: dict[bytes, bytes | list[bytes] | None] | None = None) -> None:
+        self.replies: dict[bytes, bytes | list[bytes] | None] = {} if replies is None else dict(replies)
         self.lines: list[bytes] = []
         self.connections = 0
         self.port: int = 0
@@ -54,6 +55,8 @@ class FakePrologix:
                 line = line.rstrip(b"\n")
                 self.lines.append(line)
                 reply = self.replies.get(line)
+                if isinstance(reply, list):
+                    reply = reply.pop(0) if len(reply) > 1 else reply[0]
                 if reply is not None:
                     writer.write(reply)
                     await writer.drain()
