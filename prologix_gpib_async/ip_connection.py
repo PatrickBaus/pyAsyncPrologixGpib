@@ -260,7 +260,7 @@ class _AsyncIPConnection:
                         self.__logger.warning(
                             "Incomplete read request from host (%s:%d). Check your data.", *self.__host
                         )
-                        return data
+                        return exc.partial
                     else:
                         self.__logger.error("Connection error. The host (%s:%d) did not reply.", *self.__host)
                         try:
