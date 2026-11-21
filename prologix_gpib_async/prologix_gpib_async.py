@@ -319,9 +319,14 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
                 else:
                     await self.__write(f"++read {ord(character):d}".encode("ascii"))
 
-            return await self.__conn.read(
-                length=length, eol_character=self.__state.eot_char if self.__state.send_eot else self._SEPARATOR
-            )
+            if character is not None:
+                # The adapter stops reading at `character`, so that is where the network message ends as well
+                eol_character = character
+            elif self.__state.send_eot:
+                eol_character = self.__state.eot_char
+            else:
+                eol_character = self._SEPARATOR
+            return await self.__conn.read(length=length, eol_character=eol_character)
 
     async def get_device_mode(self) -> DeviceMode:
         """
