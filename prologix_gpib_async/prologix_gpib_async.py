@@ -182,10 +182,10 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
             await self.__conn.connect()
             lock = self.__conn.meta.setdefault("lock", asyncio.Lock())  # either create a new lock or get the old one
             async with lock:
-                await asyncio.gather(
-                    self.set_save_config(False),  # Disable saving the config to EEPROM by default to save EEPROM writes
-                    self.__ensure_state(),
-                )
+                # Disable saving the config to EEPROM by default to save EEPROM writes. This must be sent before the
+                # configuration, otherwise every setting would be written to the EEPROM.
+                await self.__set_save_config(False)
+                await self.__ensure_state()
         except BaseException:  # pylint: disable=broad-except
             await self.__conn.disconnect()
             raise
@@ -208,6 +208,11 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         Note: Before calling this function, acquire the self.__conn.meta['lock'], to ensure, that only one gpib device
         is modifying the remote state of the controller.
         """
+        if "save_config" not in self.__conn.meta:
+            # The remote state is unknown, e.g. after a reset. Disable saving to EEPROM before pushing the
+            # configuration, so that it does not wear out the EEPROM.
+            await self.__set_save_config(False)
+
         jobs = []
         if self.__state.device_mode != self.__conn.meta.get("device_mode"):
             jobs.append(self.__set_device_mode(self.__state.device_mode))
@@ -811,8 +816,14 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
     async def reset(self) -> None:
         """
         Reset the controller. It takes about five seconds for the controller to reboot.
+        After the reboot the controller loads its settings from the EEPROM, so the cached state is discarded
+        and the full configuration is sent again with the next command.
         """
-        await self.__write(b"++rst")
+        async with self.__conn.meta["lock"]:
+            await self.__write(b"++rst")
+            lock = self.__conn.meta["lock"]
+            self.__conn.meta.clear()
+            self.__conn.meta["lock"] = lock
 
     async def set_save_config(self, enable: bool = False) -> None:
         """
@@ -825,8 +836,16 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         enable: bool
             Save the configuration to the EEPROM on changes if True.
         """
+        async with self.__conn.meta["lock"]:
+            await self.__set_save_config(enable)
+
+    async def __set_save_config(self, enable: bool) -> None:
+        """
+        This function needs a lock on self.__conn.meta['lock'].
+        """
         enable = bool(int(enable))
         await self.__write(f"++savecfg {enable:d}".encode("ascii"))
+        self.__conn.meta["save_config"] = enable
 
     async def get_save_config(self) -> bool:
         """

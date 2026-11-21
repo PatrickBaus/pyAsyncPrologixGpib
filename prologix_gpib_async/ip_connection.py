@@ -408,7 +408,16 @@ class _AsyncPooledIPConnection(_AsyncIPConnection):
                 # Add the client again, because the lock might have been due to a pending disconnect, which would remove
                 # us from the set
                 self.__clients.add(client)
+                was_connected = self.is_connected
                 await super().connect()  # The `connect()` call is free, if the connection is already connected
+                if not was_connected:
+                    # This is a new connection or a reconnect after the connection was lost, possibly because the
+                    # adapter rebooted. The cached hardware state can no longer be trusted, so drop it but keep the
+                    # lock, because other clients might be waiting on it.
+                    lock = self.__meta.get("lock")
+                    self.__meta.clear()
+                    if lock is not None:
+                        self.__meta["lock"] = lock
         except Exception:
             # If there is *any* error, remove the client from the list of connected clients
             self.__clients.discard(client)
