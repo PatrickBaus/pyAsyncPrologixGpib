@@ -71,6 +71,8 @@ target-version = ["py312"]
 
 [tool.mypy]
 python_version = "3.12"
+# Require @typing.override on every overriding method, so that renaming a base method cannot silently break a subclass
+enable_error_code = ["explicit-override"]
 
 [build-system]
 requires = [

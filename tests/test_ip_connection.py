@@ -49,7 +49,7 @@ def test_shared_connection_uses_own_timeout():
             ):
                 assert adapter.connections == 1  # the connection really is shared
                 start = time.monotonic()
-                with pytest.raises(asyncio.TimeoutError):
+                with pytest.raises(TimeoutError):
                     await fast.read(eol_character=b"\n")
                 elapsed = time.monotonic() - start
                 await slow.write(b"keep slow in use")

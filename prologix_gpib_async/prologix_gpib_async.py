@@ -5,17 +5,12 @@ This file implements the API used by the Prologix GPIB adapters in pure python u
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
-from types import TracebackType
-from typing import Type
-
-try:
-    from typing import Self  # type: ignore # Python >=3.11
-except ImportError:
-    from typing_extensions import Self
-
 import re  # needed to escape characters in the byte stream
+from collections.abc import Sequence
+from dataclasses import dataclass
 from enum import Enum, Flag, unique
+from types import TracebackType
+from typing import Self, override
 
 from .ip_connection import AsyncSharedIPConnection
 
@@ -54,7 +49,11 @@ class RqsMask(Flag):
     TIMO = 1 << 14
 
 
-@dataclass
+# A GPIB address is either a primary address or a (primary address, secondary address) pair
+type GpibAddress = int | tuple[int, int] | list[int]
+
+
+@dataclass(slots=True, kw_only=True)
 class DeviceState:  # pylint: disable=too-many-instance-attributes # This is how it is. No way around it.
     """Represents the state of the Prologix adapter."""
 
@@ -161,6 +160,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         self.__wait_delay: float
         self.__set_wait_delay(wait_delay)
 
+    @override
     def __str__(self) -> str:
         return f"Prologix GPIB at {str(self.__conn)}"
 
@@ -169,7 +169,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         return self
 
     async def __aexit__(
-        self, exc_type: Type[BaseException] | None, exc: BaseException | None, traceback: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc: BaseException | None, traceback: TracebackType | None
     ) -> None:
         await self.disconnect()
 
@@ -213,26 +213,24 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
             # configuration, so that it does not wear out the EEPROM.
             await self.__set_save_config(False)
 
-        jobs = []
+        # Send the settings one after the other. They all go down the same connection anyway, and this keeps the
+        # order fixed (the mode must be set before the address) and passes on errors unchanged.
         if self.__state.device_mode != self.__conn.meta.get("device_mode"):
-            jobs.append(self.__set_device_mode(self.__state.device_mode))
+            await self.__set_device_mode(self.__state.device_mode)
         if self.__state.pad != self.__conn.meta.get("pad") or self.__state.sad != self.__conn.meta.get("sad"):
-            jobs.append(self.__set_address(self.__state.pad, self.__state.sad))
+            await self.__set_address(self.__state.pad, self.__state.sad)
         if self.__state.read_after_write != self.__conn.meta.get("read_after_write"):
-            jobs.append(self.__set_read_after_write(self.__state.read_after_write))
+            await self.__set_read_after_write(self.__state.read_after_write)
         if self.__state.send_eoi != self.__conn.meta.get("send_eoi"):
-            jobs.append(self.__set_eoi(self.__state.send_eoi))
+            await self.__set_eoi(self.__state.send_eoi)
         if self.__state.send_eot != self.__conn.meta.get("send_eot"):
-            jobs.append(self.__set_eot(self.__state.send_eot))
+            await self.__set_eot(self.__state.send_eot)
         if self.__state.eot_char != self.__conn.meta.get("eot_char"):
-            jobs.append(self.__set_eot_char(self.__state.eot_char))
+            await self.__set_eot_char(self.__state.eot_char)
         if self.__state.eos_mode != self.__conn.meta.get("eos_mode"):
-            jobs.append(self.__set_eos_mode(self.__state.eos_mode))
+            await self.__set_eos_mode(self.__state.eos_mode)
         if self.__state.timeout != self.__conn.meta.get("timeout"):
-            jobs.append(self.__timeout(self.__state.timeout))
-
-        if jobs:
-            await asyncio.gather(*jobs)
+            await self.__timeout(self.__state.timeout)
 
     async def __query_command(self, command: bytes) -> bytes:
         """
@@ -667,9 +665,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
             await self.__ensure_state()
             await self.__write(b"++clr")
 
-    async def trigger(
-        self, devices: tuple[int | tuple[int, int] | list[int], ...] | list[int | tuple[int, int] | list[int]] = ()
-    ) -> None:
+    async def trigger(self, devices: Sequence[GpibAddress] = ()) -> None:
         """
         Trigger the selected instrument, or if specified a list of devices.
         The list of devices can either be a list (or tuple) of primary addresses or a list/tuple of lists/tuples of
@@ -693,13 +689,15 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
             else:
                 command = b"++trg"
                 for device in devices:
-                    if isinstance(device, (list, tuple)):
-                        pad, sad = device
-                        assert (0 <= pad <= 30) and (sad == 0 or (0x60 <= sad <= 0x7E))
-                        command += b" " + bytes(str(int(pad)), "ascii") + b" " + bytes(str(int(sad)), "ascii")
-                    else:
-                        assert 0 <= device <= 30
-                        command += b" " + bytes(str(int(device)), "ascii")
+                    match device:
+                        case int():
+                            assert 0 <= device <= 30
+                            command += f" {device:d}".encode("ascii")
+                        case [pad, sad]:
+                            assert (0 <= pad <= 30) and (sad == 0 or (0x60 <= sad <= 0x7E))
+                            command += f" {int(pad):d} {int(sad):d}".encode("ascii")
+                        case _:
+                            raise TypeError(f"Invalid GPIB address: {device!r}. Expected pad or (pad, sad).")
                 await self.__write(command)
 
     async def version(self) -> str:
@@ -754,19 +752,18 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         int
             The status byte
         """
+        loop = asyncio.get_running_loop()
         while True:
-            # Note: The task will be garbage collected, if we exit the function
-            sleep_task: asyncio.Task = asyncio.create_task(asyncio.sleep(self.__wait_delay))
+            next_poll = loop.time() + self.__wait_delay
 
             # Test if the SRQ line has been pulled low and if this was done by the instrument managed by this class.
             if await self.test_srq():
                 spoll = await self.serial_poll(self.__state.pad, self.__state.sad)
                 if spoll & (1 << 6):  # SRQ bit set
-                    # Cancel the wait and return early
                     return spoll
 
             # Now wait until self.__wait_delay is over. Then start a new request.
-            await sleep_task
+            await asyncio.sleep(max(0.0, next_poll - loop.time()))
 
     async def wait(self, mask: int) -> int:
         """
@@ -787,16 +784,17 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         ------
         ValueError
             If RqsMask.RQS is not set.
-        asyncio.TimeoutError:
+        TimeoutError:
             If the connection timeout runs out before the device signals a request for service
         """
         rqs_mask = RqsMask(mask)
         if not bool(rqs_mask & RqsMask.RQS):
-            raise ValueError("{RqsMask.RQS} not set")
+            raise ValueError(f"{RqsMask.RQS} not set")
 
         if bool(rqs_mask & RqsMask.TIMO):
             # Wait for the GPIB + connection timeout
-            return await asyncio.wait_for(self.__wait(), timeout=self.__conn.timeout)
+            async with asyncio.timeout(self.__conn.timeout):
+                return await self.__wait()
 
         return await self.__wait()
 
