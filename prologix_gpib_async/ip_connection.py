@@ -217,7 +217,9 @@ class _AsyncIPConnection:
                 f"Prologix IP connection error. Connection lost to host '{self.__host[0]}:{self.__host[1]}'."
             ) from None
 
-    async def read(self, length: int | None = None, eol_character: bytes | None = None) -> bytes:
+    async def read(
+        self, length: int | None = None, eol_character: bytes | None = None, timeout: float | None = None
+    ) -> bytes:
         """
         Read either a fixed number of bytes or until the eol_character has been found. If length is
         set, we will read a fixed number of bytes.
@@ -228,6 +230,8 @@ class _AsyncIPConnection:
             number of bytes to be read if not None
         eol_character: bytes, default=None
             eol character to terminate the read if length is None.
+        timeout: float, default=None
+            timeout of this read in seconds. Uses the connection timeout if None.
 
         Returns
         ----------
@@ -238,6 +242,7 @@ class _AsyncIPConnection:
             raise NotConnectedError("Prologix IP connection not connected")
         assert self.__reader is not None
         assert self.__lock is not None
+        timeout = self.__timeout if timeout is None else timeout
 
         async with self.__lock:
             if self.is_connected:  # We need to check again, because the connection might have closed by now
@@ -248,12 +253,12 @@ class _AsyncIPConnection:
                         coro = self.__reader.readuntil(eol_character)
                     else:
                         coro = self.__reader.readexactly(length)
-                    data = await asyncio.wait_for(coro, timeout=self.__timeout)
+                    data = await asyncio.wait_for(coro, timeout=timeout)
 
                     self.__logger.debug("Data read: %s", data)
                     return data
                 except asyncio.TimeoutError:
-                    self.__logger.debug("Timeout (>%d s) while reading data.", self.__timeout)
+                    self.__logger.debug("Timeout (>%s s) while reading data.", timeout)
                     raise
                 except asyncio.IncompleteReadError as exc:
                     if len(exc.partial) > 0:  # pylint: disable=no-else-return
@@ -563,4 +568,5 @@ class AsyncSharedIPConnection:
         """
         if self.__conn is None:
             raise NotConnectedError("Prologix IP connection not connected")
-        return await self.__conn.read(length, eol_character)
+        # The pooled connection was created with the timeout of its first client, so pass our own
+        return await self.__conn.read(length, eol_character, timeout=self.__timeout)
