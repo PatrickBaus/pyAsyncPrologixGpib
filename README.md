@@ -1,4 +1,5 @@
 [![pylint](../../actions/workflows/pylint.yml/badge.svg)](../../actions/workflows/pylint.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/PatrickBaus/pyAsyncPrologixGpib/python-coverage-comment-action-data/endpoint.json)](https://github.com/PatrickBaus/pyAsyncPrologixGpib/tree/python-coverage-comment-action-data)
 [![PyPI](https://img.shields.io/pypi/v/prologix-gpib-async)](https://pypi.org/project/prologix-gpib-async/)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/prologix-gpib-async)
 ![PyPI - Status](https://img.shields.io/pypi/status/prologix-gpib-async)
