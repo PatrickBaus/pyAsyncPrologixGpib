@@ -159,7 +159,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
             device_mode=device_mode,
         )
         self.__wait_delay: float
-        self.set_wait_delay(wait_delay)
+        self.__set_wait_delay(wait_delay)
 
     def __str__(self) -> str:
         return f"Prologix GPIB at {str(self.__conn)}"
@@ -887,6 +887,9 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         ----------
         wait : wait for an event
         """
+        self.__set_wait_delay(value)
+
+    def __set_wait_delay(self, value: float) -> None:
         assert 0.1 <= value <= self.__state.timeout
 
         self.__wait_delay = min(max(value, 0.1), self.__state.timeout)
