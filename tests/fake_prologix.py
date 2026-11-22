@@ -6,6 +6,9 @@ commands from a configurable reply table.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Coroutine, Mapping
+from types import TracebackType
+from typing import Any
 
 
 class FakePrologix:
@@ -19,7 +22,7 @@ class FakePrologix:
         A list of replies is answered one after the other, the last reply is repeated.
     """
 
-    def __init__(self, replies: dict[bytes, bytes | list[bytes] | None] | None = None) -> None:
+    def __init__(self, replies: Mapping[bytes, bytes | list[bytes] | None] | None = None) -> None:
         self.replies: dict[bytes, bytes | list[bytes] | None] = {} if replies is None else dict(replies)
         self.lines: list[bytes] = []
         self.connections = 0
@@ -32,7 +35,9 @@ class FakePrologix:
         self.port = self.__server.sockets[0].getsockname()[1]
         return self
 
-    async def __aexit__(self, *exc) -> None:
+    async def __aexit__(
+        self, exc_type: type[BaseException] | None, exc: BaseException | None, traceback: TracebackType | None
+    ) -> None:
         self.drop_connections()
         assert self.__server is not None
         self.__server.close()
@@ -66,10 +71,10 @@ class FakePrologix:
             writer.close()
 
 
-def run(coro, timeout: float = 5) -> object:
+def run[T](coro: Coroutine[Any, Any, T], timeout: float = 5) -> T:
     """Run a coroutine with a hard timeout, so a broken test fails instead of hanging."""
 
-    async def guarded():
+    async def guarded() -> T:
         async with asyncio.timeout(timeout):
             return await coro
 

@@ -130,7 +130,7 @@ class AsyncPrologixGpibDevice(AsyncPrologixGpib):
         )
 
     @override
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Prologix GPIB device ({self.pad},{self.sad}) at {self._conn}"
 
     @override

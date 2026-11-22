@@ -26,7 +26,7 @@ from prologix_gpib_async import AsyncPrologixGpibEthernetController
 IP_ADDRESS = "localhost"
 
 
-async def main():
+async def main() -> None:
     """This example will print the IDs of the two different SCPI devices"""
     try:
         async with (

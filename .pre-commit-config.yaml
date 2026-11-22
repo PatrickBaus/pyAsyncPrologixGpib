@@ -40,4 +40,5 @@ repos:
     rev: 'v2.4.1'
     hooks:
     -   id: mypy
-        additional_dependencies: [ types-simplejson ]
+        # The tests are type checked in strict mode, so mypy needs the type hints of pytest
+        additional_dependencies: [ pytest, types-simplejson ]

@@ -1,12 +1,14 @@
 """Shared fixtures for the test suite."""
 
+from collections.abc import Iterator
+
 import pytest
 
 from prologix_gpib_async.ip_connection import _AsyncIPConnectionPool
 
 
 @pytest.fixture(autouse=True)
-def empty_connection_pool():
+def empty_connection_pool() -> Iterator[None]:
     """
     The connection pool is a class attribute, so a connection leaked by one test would be shared with the next one.
     Make sure every test releases its connections.
