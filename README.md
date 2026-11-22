@@ -4,12 +4,12 @@
 
 | Name                                              |    Stmts |     Miss |   Branch |   BrPart |    Cover |   Missing |
 |-------------------------------------------------- | -------: | -------: | -------: | -------: | -------: | --------: |
-| prologix\_gpib\_async/\_\_init\_\_.py             |        5 |        0 |        0 |        0 |     100% |           |
+| prologix\_gpib\_async/\_\_init\_\_.py             |        6 |        0 |        0 |        0 |     100% |           |
 | prologix\_gpib\_async/ip\_connection.py           |      220 |        0 |       48 |        0 |     100% |           |
 | prologix\_gpib\_async/prologix\_gpib\_async.py    |      322 |        0 |       52 |        0 |     100% |           |
 | prologix\_gpib\_async/prologix\_gpib\_base.py     |       68 |        0 |        0 |        0 |     100% |           |
 | prologix\_gpib\_async/prologix\_gpib\_ethernet.py |       23 |        0 |        0 |        0 |     100% |           |
-| **TOTAL**                                         |  **638** |    **0** |  **100** |    **0** | **100%** |           |
+| **TOTAL**                                         |  **639** |    **0** |  **100** |    **0** | **100%** |           |
 
 
 ## Setup coverage badge
