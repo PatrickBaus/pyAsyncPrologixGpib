@@ -495,7 +495,7 @@ class AsyncSharedIPConnection:
         """
         return self.__timeout
 
-    def __init__(self, hostname: str, port: int = 1234, timeout: float | None = None):
+    def __init__(self, hostname: str, port: int = 1234, timeout: float | None = None) -> None:
         self.__timeout = DEFAULT_WAIT_TIMEOUT if timeout is None else timeout
         self.__hostname = hostname
         self.__port = port

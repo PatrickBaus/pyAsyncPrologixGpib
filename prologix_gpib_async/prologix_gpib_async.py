@@ -597,7 +597,7 @@ class AsyncPrologixGpib:  # pylint: disable=too-many-public-methods
         async with self.__conn.meta["lock"]:
             await self.__timeout(value)
 
-    async def __timeout(self, value: float):
+    async def __timeout(self, value: float) -> None:
         """
         This function needs a lock on self.__conn.meta['lock'].
         """

@@ -24,7 +24,7 @@ import asyncio
 from prologix_gpib_async import AsyncPrologixGpibEthernetController
 
 
-async def main():
+async def main() -> None:
     """This example will print the controller version and the ID of the attached SCPI device"""
     try:
         # The primary address (e.g. 22) can be anything in range(1,31).

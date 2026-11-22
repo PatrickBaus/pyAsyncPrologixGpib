@@ -1,6 +1,7 @@
 """Tests for the commands sent to the Prologix adapter and the parsing of its replies."""
 
 import socket
+from typing import Any
 
 import pytest
 
@@ -19,16 +20,16 @@ from .fake_prologix import FakePrologix, run
 VERSION = b"Prologix GPIB-ETHERNET Controller version 01.06.06.00"
 
 
-def _controller(adapter, **kwargs):
+def _controller(adapter: FakePrologix, **kwargs: Any) -> AsyncPrologixGpibEthernetController:
     kwargs = {"pad": 22, "timeout": 0.5, "ethernet_timeout": 0.5} | kwargs
     return AsyncPrologixGpibEthernetController("127.0.0.1", port=adapter.port, **kwargs)
 
 
-def _device(adapter, **kwargs):
+def _device(adapter: FakePrologix, **kwargs: Any) -> AsyncPrologixGpibEthernetDevice:
     return AsyncPrologixGpibEthernetDevice("127.0.0.1", port=adapter.port, pad=5, ethernet_timeout=0.5, **kwargs)
 
 
-async def _sync(gpib):
+async def _sync(gpib: AsyncPrologixGpib) -> None:
     """
     The writes do not wait for the adapter. Query the version, so that all lines sent before have been received
     by the fake adapter once the reply arrives.
@@ -40,7 +41,8 @@ def _closed_port() -> int:
     """Returns a port on localhost, that nobody listens to."""
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
+        port: int = sock.getsockname()[1]
+        return port
 
 
 @pytest.mark.parametrize(
@@ -62,10 +64,12 @@ def _closed_port() -> int:
         ("version", (), b"++ver", VERSION, VERSION.decode()),
     ],
 )
-def test_controller_query(method, args, command, reply, expected):  # pylint: disable=too-many-arguments
+def test_controller_query(
+    method: str, args: tuple[Any, ...], command: bytes, reply: bytes, expected: Any
+) -> None:  # pylint: disable=too-many-arguments
     """The queries send the command and parse the reply without the trailing b"\\r\\n"."""
 
-    async def main():
+    async def main() -> Any:
         async with FakePrologix({command: reply + b"\r\n"}) as adapter:
             async with _controller(adapter) as gpib:
                 return await getattr(gpib, method)(*args)
@@ -94,10 +98,10 @@ def test_controller_query(method, args, command, reply, expected):  # pylint: di
         ("write", (b"VOLT 1.5+\r\n\x1b",), b"VOLT 1.5\x1b+\x1b\r\x1b\n\x1b\x1b"),  # escape control characters
     ],
 )
-def test_controller_command(method, args, command):
+def test_controller_command(method: str, args: tuple[Any, ...], command: bytes) -> None:
     """The setters and commands send the right line to the adapter."""
 
-    async def main():
+    async def main() -> list[bytes]:
         async with FakePrologix({b"++ver": VERSION + b"\r\n"}) as adapter:
             async with _controller(adapter) as gpib:
                 await _sync(gpib)
@@ -110,10 +114,10 @@ def test_controller_command(method, args, command):
     assert b"\n".join(run(main())) == command + b"\n++ver"
 
 
-def test_settings_are_only_sent_on_change():
+def test_settings_are_only_sent_on_change() -> None:
     """The cached state of the adapter avoids sending the configuration again with every command."""
 
-    async def main():
+    async def main() -> list[bytes]:
         async with FakePrologix({b"++ver": VERSION + b"\r\n"}) as adapter:
             async with _controller(adapter) as gpib:
                 await gpib.write(b"*RST")
@@ -126,10 +130,10 @@ def test_settings_are_only_sent_on_change():
     assert run(main()) == [b"*CLS", b"++ver"]
 
 
-def test_trigger_with_secondary_address():
+def test_trigger_with_secondary_address() -> None:
     """Without a list of devices, the selected device is triggered by its primary and secondary address."""
 
-    async def main():
+    async def main() -> list[bytes]:
         async with FakePrologix({b"++ver": VERSION + b"\r\n"}) as adapter:
             async with _controller(adapter, sad=96) as gpib:
                 await gpib.trigger()
@@ -141,10 +145,10 @@ def test_trigger_with_secondary_address():
     assert lines[-2] == b"++trg 22 96"
 
 
-def test_read_length():
+def test_read_length() -> None:
     """A fixed number of bytes can be read."""
 
-    async def main():
+    async def main() -> bytes:
         async with FakePrologix({b"++read eoi": b"abcdef"}) as adapter:
             async with _controller(adapter) as gpib:
                 return await gpib.read(length=3)
@@ -152,10 +156,10 @@ def test_read_length():
     assert run(main()) == b"abc"
 
 
-def test_read_until_eot_character():
+def test_read_until_eot_character() -> None:
     """If the adapter appends the EOT character, the read ends at that character."""
 
-    async def main():
+    async def main() -> bytes:
         async with FakePrologix({b"++read eoi": b"1.23\n4\x80"}) as adapter:
             async with _controller(adapter) as gpib:
                 await gpib.set_eot_char(b"\x80")
@@ -165,10 +169,10 @@ def test_read_until_eot_character():
     assert run(main()) == b"1.23\n4\x80"
 
 
-def test_read_after_write_without_polling():
+def test_read_after_write_without_polling() -> None:
     """With read-after-write enabled, read(force_poll=False) does not ask the device to talk."""
 
-    async def main():
+    async def main() -> tuple[bytes, list[bytes]]:
         async with FakePrologix({b"*IDN?": b"ACME\n"}) as adapter:
             async with _controller(adapter) as gpib:
                 await gpib.set_read_after_write(True)
@@ -180,11 +184,14 @@ def test_read_after_write_without_polling():
     assert b"++read eoi" not in lines
 
 
-def test_wait_without_timeout():
+def test_wait_without_timeout() -> None:
     """Without TIMO, wait() polls until the device has set the RQS bit in its status byte."""
 
-    async def main():
-        replies = {b"++srq": b"1\r\n", b"++spoll 22": [b"16\r\n", b"80\r\n"]}  # Only 80 has bit 6 (RQS) set
+    async def main() -> tuple[int, list[bytes]]:
+        replies: dict[bytes, bytes | list[bytes]] = {
+            b"++srq": b"1\r\n",
+            b"++spoll 22": [b"16\r\n", b"80\r\n"],
+        }  # Only 80 has bit 6 (RQS) set
         async with FakePrologix(replies) as adapter:
             async with _controller(adapter) as gpib:
                 gpib.set_wait_delay(0.1)
@@ -196,7 +203,7 @@ def test_wait_without_timeout():
     assert lines.count(b"++spoll 22") == 2
 
 
-def test_controller_properties():
+def test_controller_properties() -> None:
     """The properties of the controller reflect the constructor arguments."""
     gpib = AsyncPrologixGpibEthernetController("127.0.0.1", port=4321, pad=22, sad=96, timeout=2, ethernet_timeout=1)
     assert (gpib.hostname, gpib.port, gpib.pad, gpib.sad) == ("127.0.0.1", 4321, 22, 96)
@@ -204,7 +211,7 @@ def test_controller_properties():
     assert str(gpib) == "Prologix GPIB controller of device (22,96) at AsyncSharedIPConnection(127.0.0.1:4321)"
 
 
-def test_base_class_str():
+def test_base_class_str() -> None:
     """The base class names the connection."""
     conn = AsyncSharedIPConnection("127.0.0.1", 4321)
     gpib = AsyncPrologixGpib(
@@ -220,17 +227,17 @@ def test_base_class_str():
     assert str(gpib) == "Prologix GPIB at AsyncSharedIPConnection(127.0.0.1:4321)"
 
 
-def test_device_properties():
+def test_device_properties() -> None:
     """The properties of the device reflect the constructor arguments."""
     gpib = AsyncPrologixGpibEthernetDevice("127.0.0.1", port=4321, pad=5, sad=97)
     assert (gpib.hostname, gpib.port, gpib.pad, gpib.sad) == ("127.0.0.1", 4321, 5, 97)
     assert str(gpib) == "Prologix GPIB device (5,97) at AsyncSharedIPConnection(127.0.0.1:4321)"
 
 
-def test_device_configuration():
+def test_device_configuration() -> None:
     """A device configures the adapter in device mode."""
 
-    async def main():
+    async def main() -> list[bytes]:
         async with FakePrologix({b"++ver": VERSION + b"\r\n"}) as adapter:
             async with _device(adapter) as gpib:
                 await _sync(gpib)
@@ -249,10 +256,12 @@ def test_device_configuration():
         ("get_listen_only", (), b"++lon", b"1", True),
     ],
 )
-def test_device_query(method, args, command, reply, expected):  # pylint: disable=too-many-arguments
+def test_device_query(
+    method: str, args: tuple[Any, ...], command: bytes, reply: bytes, expected: Any
+) -> None:  # pylint: disable=too-many-arguments
     """The queries only available in device mode."""
 
-    async def main():
+    async def main() -> Any:
         async with FakePrologix({command: reply + b"\r\n"}) as adapter:
             async with _device(adapter) as gpib:
                 return await getattr(gpib, method)(*args)
@@ -267,10 +276,10 @@ def test_device_query(method, args, command, reply, expected):  # pylint: disabl
         ("set_listen_only", (True,), b"++lon 1"),
     ],
 )
-def test_device_command(method, args, command):
+def test_device_command(method: str, args: tuple[Any, ...], command: bytes) -> None:
     """The commands only available in device mode."""
 
-    async def main():
+    async def main() -> list[bytes]:
         async with FakePrologix({b"++ver": VERSION + b"\r\n"}) as adapter:
             async with _device(adapter) as gpib:
                 await getattr(gpib, method)(*args)
@@ -289,7 +298,7 @@ def test_device_command(method, args, command):
         ("get_status", ()),
     ],
 )
-def test_controller_rejects_device_commands(method, args):
+def test_controller_rejects_device_commands(method: str, args: tuple[Any, ...]) -> None:
     """Commands of the device mode are not available in controller mode."""
     gpib = AsyncPrologixGpibEthernetController("127.0.0.1", pad=22)
     with pytest.raises(TypeError, match="Not supported in controller mode"):
@@ -313,17 +322,17 @@ def test_controller_rejects_device_commands(method, args):
         ("wait", (RqsMask.RQS.value,)),
     ],
 )
-def test_device_rejects_controller_commands(method, args):
+def test_device_rejects_controller_commands(method: str, args: tuple[Any, ...]) -> None:
     """Commands of the controller mode are not available in device mode."""
     gpib = AsyncPrologixGpibEthernetDevice("127.0.0.1", pad=5)
     with pytest.raises(TypeError, match="Not supported in device mode"):
         run(getattr(gpib, method)(*args))
 
 
-def test_failed_connect_releases_the_connection():
+def test_failed_connect_releases_the_connection() -> None:
     """If the adapter cannot be reached, the error is passed on and the connection is returned to the pool."""
 
-    async def main():
+    async def main() -> None:
         gpib = AsyncPrologixGpibEthernetController("127.0.0.1", port=_closed_port(), pad=22)
         await gpib.connect()
 
@@ -331,10 +340,10 @@ def test_failed_connect_releases_the_connection():
         run(main())
 
 
-def test_close_is_an_alias_for_disconnect():
+def test_close_is_an_alias_for_disconnect() -> None:
     """close() disconnects from the adapter."""
 
-    async def main():
+    async def main() -> None:
         async with FakePrologix() as adapter:
             gpib = _controller(adapter)
             await gpib.connect()
