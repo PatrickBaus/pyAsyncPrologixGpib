@@ -21,6 +21,7 @@ classifiers = [
     "Natural Language :: English",
     "Topic :: Home Automation",
     "Topic :: Scientific/Engineering",
+    "Typing :: Typed",
 ]
 keywords = ["Prologix", "GPIB", "API"]
 dynamic = ["version"]
